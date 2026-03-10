@@ -15,119 +15,94 @@
   h5,
   h6 {
     font-family: 'Playfair Display', serif;
+    letter-spacing: -0.02em;
   }
 
   ::selection {
-    background-color: rgba(212, 160, 52, 0.3);
+    background-color: rgba(193, 106, 70, 0.2);
     @apply text-brown-dark;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-gradient-to-r from-brown to-brown-dark text-white px-6 py-2.5 rounded-xl transition-all duration-300 font-medium shadow-warm;
+    @apply bg-brown-dark text-white px-6 py-2.5 rounded-lg transition-all duration-300 font-medium;
   }
 
   .btn-primary:hover {
-    @apply shadow-warm-lg from-brown-dark to-brown;
-    transform: scale(1.02);
+    @apply bg-brown opacity-90;
+    transform: translateY(-1px);
   }
 
   .btn-primary:active {
-    transform: scale(0.98);
+    transform: translateY(0);
   }
 
   .btn-secondary {
-    @apply bg-gradient-to-r from-purple to-purple-dark text-white px-6 py-2.5 rounded-xl transition-all duration-300 font-medium shadow-md;
+    @apply bg-sand text-brown-dark px-6 py-2.5 rounded-lg transition-all duration-300 font-medium hover:bg-gold-light;
   }
 
   .btn-secondary:hover {
-    @apply shadow-lg;
-    transform: scale(1.02);
+    transform: translateY(-1px);
   }
 
   .btn-secondary:active {
-    transform: scale(0.98);
+    transform: translateY(0);
   }
 
   .btn-outline {
-    @apply border-2 border-brown text-brown px-6 py-2.5 rounded-xl transition-all duration-300 font-medium;
+    @apply border border-brown-light text-brown-dark px-6 py-2.5 rounded-lg transition-all duration-300 font-medium hover:bg-sand;
   }
 
   .btn-outline:hover {
-    @apply bg-brown text-white shadow-warm;
+    @apply bg-sand;
   }
 
   .btn-outline:active {
-    transform: scale(0.98);
+    transform: translateY(0);
   }
 
   .card {
-    @apply bg-white rounded-2xl shadow-glass overflow-hidden transition-all duration-300;
-  }
-
-  .card:hover {
-    @apply shadow-warm-lg;
-    transform: translateY(-4px);
+    @apply bg-white rounded-xl border border-sand transition-all duration-500 hover:shadow-warm hover:border-gold-light;
   }
 
   .card-flat {
-    @apply bg-white rounded-2xl shadow-glass overflow-hidden transition-all duration-300;
+    @apply bg-white rounded-xl border border-sand overflow-hidden;
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 border-2 border-sand rounded-xl transition-all duration-200 bg-white;
+    @apply w-full px-4 py-2.5 border border-sand rounded-lg transition-all duration-300 bg-white focus:outline-none focus:border-terracotta focus:ring-1 focus:ring-terracotta/20;
     font-family: 'Inter', 'Mukta', sans-serif;
   }
 
-  .input-field:focus {
-    @apply outline-none border-gold;
-    box-shadow: 0 0 0 2px rgba(212, 160, 52, 0.2);
-  }
-
   .glass-card {
-    background-color: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    @apply rounded-2xl shadow-glass;
+    @apply bg-white rounded-xl border border-sand transition-colors;
   }
 
   .section-title {
-    @apply text-3xl md:text-4xl font-bold text-brown-dark;
+    @apply text-3xl md:text-5xl font-medium text-brown-dark tracking-tight;
     font-family: 'Playfair Display', serif;
   }
 
   .section-subtitle {
-    color: rgba(92, 46, 10, 0.6);
-    @apply text-lg;
+    @apply text-lg text-brown-light font-light mt-4;
     font-family: 'Inter', 'Mukta', sans-serif;
   }
 
   .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    @apply inline-flex items-center px-3 py-1 rounded-md text-xs font-medium tracking-wide uppercase;
   }
 
   .badge-gold {
-    @apply badge;
-    background-color: rgba(212, 160, 52, 0.1);
-    color: #B8860B;
-    border: 1px solid rgba(212, 160, 52, 0.2);
+    @apply inline-flex items-center px-3 py-1 bg-sand text-brown-dark rounded-md text-xs font-medium tracking-wide border border-transparent;
   }
 
   .badge-purple {
-    @apply badge;
-    background-color: rgba(107, 70, 193, 0.1);
-    @apply text-purple;
-    border: 1px solid rgba(107, 70, 193, 0.2);
+    @apply inline-flex items-center px-3 py-1 bg-white border border-sand text-brown-dark transition-colors rounded-md text-xs font-medium tracking-wide;
   }
 
   .motif-border {
-    @apply relative;
-  }
-
-  .motif-border::before {
-    content: '';
-    @apply absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent;
+    @apply relative border-t border-sand pt-4;
   }
 }
 
@@ -160,11 +135,11 @@
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-brown via-gold-dark to-brown-dark;
+    @apply text-brown-dark;
   }
 
   .text-gradient-gold {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold to-gold-dark;
+    @apply text-terracotta;
   }
 }
 
@@ -183,5 +158,5 @@
 
 /* Pottery motif decoration */
 .pottery-motif {
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4A034' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2.5v-2h-3v-4h3V0h2v5.5h3v4h-3v2v2.5h20v2H22v2.5v2h3v4h-3V40h-2v-5.5h-3v-4h3V22.5v-2z' fill='%23C4B5A5' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
 }

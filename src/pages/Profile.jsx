@@ -18,8 +18,8 @@ const Profile = () => {
 
                 {/* Profile Header */}
                 <div className="glass-card p-8 mb-6 text-center">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gold/30 to-brown-light/30 flex items-center justify-center mx-auto mb-4">
-                        <User size={40} className="text-brown-dark" />
+                    <div className="w-24 h-24 rounded-full bg-sand flex items-center justify-center mx-auto mb-6">
+                        <User size={40} className="text-brown-dark stroke-[1.5]" />
                     </div>
                     <h1 className="text-2xl font-display font-bold text-brown-dark mb-1">Welcome to PottersCentral</h1>
                     <p className="text-brown-dark/60 font-body">Manage your account and orders</p>
@@ -28,65 +28,73 @@ const Profile = () => {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     {[
-                        { icon: ShoppingBag, label: 'Cart Items', value: cart.length, color: 'from-gold/20 to-gold/5' },
-                        { icon: Heart, label: 'Wishlist', value: wishlist.length, color: 'from-purple/20 to-purple/5' },
-                        { icon: Package, label: 'Orders', value: 0, color: 'from-terracotta/20 to-terracotta/5' },
-                        { icon: Clock, label: 'Pending', value: 0, color: 'from-brown-light/30 to-brown-light/10' },
-                    ].map(({ icon: Icon, label, value, color }, idx) => (
-                        <div key={idx} className="glass-card p-5 text-center">
-                            <div className={`w-12 h-12 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                                <Icon className="text-brown-dark" size={22} />
+                        { icon: ShoppingBag, label: 'Cart Items', value: cart.length },
+                        { icon: Heart, label: 'Wishlist', value: wishlist.length },
+                        { icon: Package, label: 'Orders', value: 0 },
+                        { icon: Clock, label: 'Pending', value: 0 },
+                    ].map(({ icon: Icon, label, value }, idx) => (
+                        <div key={idx} className="glass-card p-6 text-center group cursor-default hover:border-cream">
+                            <div className={`w-14 h-14 bg-sand rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform`}>
+                                <Icon className="text-brown-dark stroke-[1.5]" size={24} />
                             </div>
-                            <p className="text-2xl font-bold text-brown-dark font-display">{value}</p>
-                            <p className="text-xs text-brown-dark/50 font-body">{label}</p>
+                            <p className="text-3xl font-display font-medium text-brown-dark tracking-tight mb-1">{value}</p>
+                            <p className="text-xs text-brown-light uppercase tracking-widest font-medium">{label}</p>
                         </div>
                     ))}
                 </div>
 
                 {/* Quick Links */}
-                <div className="space-y-3">
-                    <Link to="/cart" className="glass-card p-5 flex items-center justify-between group hover:-translate-y-0.5 transition-all">
-                        <div className="flex items-center gap-4">
-                            <ShoppingBag size={22} className="text-gold-dark" />
+                <div className="space-y-4">
+                    <Link to="/cart" className="glass-card p-6 flex items-center justify-between group hover:-translate-y-1 transition-all">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-sand rounded-xl flex items-center justify-center">
+                                <ShoppingBag size={22} className="text-brown-dark stroke-[1.5]" />
+                            </div>
                             <div>
-                                <p className="font-display font-semibold text-brown-dark">Shopping Cart</p>
-                                <p className="text-xs text-brown-dark/50 font-body">{cart.length} items in cart</p>
+                                <p className="font-display font-medium text-brown-dark text-lg tracking-tight">Shopping Cart</p>
+                                <p className="text-sm text-brown-light font-light mt-1">{cart.length} items in cart</p>
                             </div>
                         </div>
-                        <ChevronRight size={20} className="text-brown-dark/30 group-hover:text-gold-dark transition-colors" />
+                        <ChevronRight size={20} className="text-brown-light group-hover:text-terracotta transition-colors" />
                     </Link>
 
-                    <Link to="/wishlist" className="glass-card p-5 flex items-center justify-between group hover:-translate-y-0.5 transition-all">
-                        <div className="flex items-center gap-4">
-                            <Heart size={22} className="text-purple" />
+                    <Link to="/wishlist" className="glass-card p-6 flex items-center justify-between group hover:-translate-y-1 transition-all">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-sand rounded-xl flex items-center justify-center">
+                                <Heart size={22} className="text-brown-dark stroke-[1.5]" />
+                            </div>
                             <div>
-                                <p className="font-display font-semibold text-brown-dark">Wishlist</p>
-                                <p className="text-xs text-brown-dark/50 font-body">{wishlist.length} saved items</p>
+                                <p className="font-display font-medium text-brown-dark text-lg tracking-tight">Wishlist</p>
+                                <p className="text-sm text-brown-light font-light mt-1">{wishlist.length} saved items</p>
                             </div>
                         </div>
-                        <ChevronRight size={20} className="text-brown-dark/30 group-hover:text-gold-dark transition-colors" />
+                        <ChevronRight size={20} className="text-brown-light group-hover:text-terracotta transition-colors" />
                     </Link>
 
-                    <Link to="/request-product" className="glass-card p-5 flex items-center justify-between group hover:-translate-y-0.5 transition-all">
-                        <div className="flex items-center gap-4">
-                            <Package size={22} className="text-terracotta" />
+                    <Link to="/request-product" className="glass-card p-6 flex items-center justify-between group hover:-translate-y-1 transition-all">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-sand rounded-xl flex items-center justify-center">
+                                <Package size={22} className="text-brown-dark stroke-[1.5]" />
+                            </div>
                             <div>
-                                <p className="font-display font-semibold text-brown-dark">Request Custom Product</p>
-                                <p className="text-xs text-brown-dark/50 font-body">Get a custom pottery piece made</p>
+                                <p className="font-display font-medium text-brown-dark text-lg tracking-tight">Request Custom Product</p>
+                                <p className="text-sm text-brown-light font-light mt-1">Get a custom pottery piece made</p>
                             </div>
                         </div>
-                        <ChevronRight size={20} className="text-brown-dark/30 group-hover:text-gold-dark transition-colors" />
+                        <ChevronRight size={20} className="text-brown-light group-hover:text-terracotta transition-colors" />
                     </Link>
 
-                    <Link to="/contact" className="glass-card p-5 flex items-center justify-between group hover:-translate-y-0.5 transition-all">
-                        <div className="flex items-center gap-4">
-                            <MapPin size={22} className="text-brown" />
+                    <Link to="/contact" className="glass-card p-6 flex items-center justify-between group hover:-translate-y-1 transition-all">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-sand rounded-xl flex items-center justify-center">
+                                <MapPin size={22} className="text-brown-dark stroke-[1.5]" />
+                            </div>
                             <div>
-                                <p className="font-display font-semibold text-brown-dark">Contact Us</p>
-                                <p className="text-xs text-brown-dark/50 font-body">Get in touch with our team</p>
+                                <p className="font-display font-medium text-brown-dark text-lg tracking-tight">Contact Us</p>
+                                <p className="text-sm text-brown-light font-light mt-1">Get in touch with our team</p>
                             </div>
                         </div>
-                        <ChevronRight size={20} className="text-brown-dark/30 group-hover:text-gold-dark transition-colors" />
+                        <ChevronRight size={20} className="text-brown-light group-hover:text-terracotta transition-colors" />
                     </Link>
                 </div>
             </div>

@@ -11,11 +11,12 @@ const About = () => {
     <div className="min-h-screen bg-cream py-12">
       <div className="max-w-7xl mx-auto px-4">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-brown-dark">
-            About Khurja@Gng
+        <div className="text-center mb-16">
+          <span className="text-terracotta tracking-widest uppercase text-xs font-semibold mb-3 inline-block">Our Story</span>
+          <h1 className="text-3xl md:text-5xl font-display font-medium mb-4 text-brown-dark tracking-tight">
+            About Potters Central
           </h1>
-          <p className="text-xl text-brown-dark/70 max-w-3xl mx-auto">
+          <p className="text-lg text-brown-light font-light max-w-2xl mx-auto leading-relaxed">
             Connecting traditional artisans with modern customers, one
             handcrafted piece at a time.
           </p>

@@ -18,17 +18,16 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   }
 
   return (
-    <header className="bg-gradient-to-r from-brown-dark via-brown to-brown-dark text-white sticky top-0 z-[100] shadow-warm-lg">
+    <header className="bg-white text-brown-dark sticky top-0 z-[100] border-b border-sand">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo / Site Name */}
           <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-            <span className="text-3xl group-hover:animate-float">🏺</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-display font-bold tracking-wide text-white group-hover:text-gold-light transition-colors">
-                PottersCentral
+              <h1 className="text-xl md:text-2xl font-display font-medium tracking-wide text-brown-dark group-hover:text-terracotta transition-colors">
+                Potters Central
               </h1>
-              <p className="text-[10px] text-gold-light/70 tracking-[0.2em] uppercase hidden md:block">
+              <p className="text-[10px] text-brown-light tracking-[0.2em] uppercase hidden md:block mt-0.5">
                 Handcrafted Heritage
               </p>
             </div>
@@ -43,10 +42,9 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
                 placeholder="Search pottery, ceramics, artisan crafts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 rounded-full text-brown-dark bg-white/95 
-                  focus:outline-none focus:ring-2 focus:ring-gold focus:bg-white 
-                  placeholder:text-brown-dark/40 text-sm font-body transition-all duration-200
-                  shadow-inner"
+                className="w-full pl-11 pr-4 py-2.5 rounded-lg text-brown-dark bg-sand 
+                  focus:outline-none focus:ring-1 focus:ring-terracotta border border-transparent focus:border-terracotta
+                  placeholder:text-brown-light text-sm transition-all duration-200"
               />
             </div>
           </form>
@@ -56,12 +54,12 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Cart */}
             <Link
               to="/cart"
-              className="relative p-2 rounded-xl hover:bg-white/10 transition-all duration-200 group"
+              className="relative p-2 rounded-lg hover:bg-sand transition-all duration-200 group text-brown-dark"
               aria-label="Shopping cart"
             >
               <ShoppingCart size={22} className="group-hover:scale-110 transition-transform" />
               {getCartCount() > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-gold text-brown-dark text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md animate-pulse-soft">
+                <span className="absolute -top-0.5 -right-0.5 bg-terracotta text-white text-[10px] font-medium rounded-full w-4 h-4 flex items-center justify-center">
                   {getCartCount()}
                 </span>
               )}
@@ -70,12 +68,12 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Wishlist */}
             <Link
               to="/wishlist"
-              className="relative p-2 rounded-xl hover:bg-white/10 transition-all duration-200 group"
+              className="relative p-2 rounded-lg hover:bg-sand transition-all duration-200 group text-brown-dark"
               aria-label="Wishlist"
             >
               <Heart size={22} className="group-hover:scale-110 transition-transform" />
               {wishlist.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-gold text-brown-dark text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                <span className="absolute -top-0.5 -right-0.5 bg-terracotta text-white text-[10px] font-medium rounded-full w-4 h-4 flex items-center justify-center">
                   {wishlist.length}
                 </span>
               )}
@@ -84,7 +82,7 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Account */}
             <Link
               to="/profile"
-              className="p-2 rounded-xl hover:bg-white/10 transition-all duration-200 group"
+              className="p-2 rounded-lg hover:bg-sand transition-all duration-200 group text-brown-dark"
               aria-label="Account"
             >
               <User size={22} className="group-hover:scale-110 transition-transform" />
@@ -92,7 +90,7 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden p-2 rounded-xl hover:bg-white/10 transition-all"
+              className="md:hidden p-2 rounded-lg hover:bg-sand transition-all text-brown-dark"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -110,16 +108,15 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
               placeholder="Search pottery, ceramics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 rounded-full text-brown-dark bg-white/95 
-                focus:outline-none focus:ring-2 focus:ring-gold 
-                placeholder:text-brown-dark/40 text-sm font-body"
+              className="w-full pl-11 pr-4 py-2.5 rounded-lg text-brown-dark bg-sand 
+                focus:outline-none focus:ring-1 focus:ring-terracotta border border-transparent focus:border-terracotta
+                placeholder:text-brown-light text-sm"
             />
           </div>
         </form>
       </div>
 
-      {/* Gold accent line */}
-      <div className="h-[2px] bg-gradient-to-r from-transparent via-gold to-transparent"></div>
+      {/* Spacer below header if needed */}
     </header>
   )
 }

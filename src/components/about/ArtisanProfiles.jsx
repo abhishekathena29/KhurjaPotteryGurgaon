@@ -81,46 +81,48 @@ const ArtisanProfiles = () => {
   ]
 
   return (
-    <section className="bg-white rounded-lg shadow-lg p-8 mb-8">
-      <h2 className="text-3xl font-bold mb-6 text-brown-dark text-center">
-        Meet Our Master Artisans
-      </h2>
-      <p className="text-center text-brown-dark/70 mb-8 max-w-2xl mx-auto">
-        Each piece of pottery tells a story of skill, dedication, and tradition.
-        Meet the talented artisans who bring these beautiful creations to life.
-      </p>
+    <section className="bg-white border border-sand rounded-xl p-8 md:p-12 mb-12">
+      <div className="text-center mb-12">
+        <h2 className="text-2xl md:text-3xl font-display font-medium mb-4 text-brown-dark tracking-tight">
+          Meet Our Artisans
+        </h2>
+        <p className="text-brown-light font-light max-w-2xl mx-auto leading-relaxed">
+          Each piece of pottery tells a story of skill, dedication, and tradition.
+          Meet the talented craftspeople who bring these beautiful creations to life.
+        </p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {artisans.map((artisan) => (
           <div
             key={artisan.id}
-            className="border-2 border-brown-light rounded-lg p-6 hover:shadow-lg transition-shadow"
+            className="border border-sand rounded-xl p-8 hover:border-cream transition-colors bg-white group flex flex-col"
           >
-            <div className="w-20 h-20 bg-brown-light rounded-full mx-auto mb-4 flex items-center justify-center">
-              <span className="text-4xl">👨‍🎨</span>
+            <div className="w-20 h-20 bg-sand rounded-full mx-auto mb-6 flex items-center justify-center grayscale group-hover:grayscale-0 transition-all opacity-50 group-hover:opacity-100">
+              <span className="text-3xl">👨‍🎨</span>
             </div>
-            <h3 className="text-xl font-bold text-center mb-2 text-brown-dark">
+            <h3 className="text-xl font-display font-medium text-center mb-1 text-brown-dark tracking-tight">
               {artisan.name}
             </h3>
-            <p className="text-center text-brown-dark/60 mb-3 font-medium">
-              {artisan.experience} of experience
+            <p className="text-center text-brown-light font-light text-sm mb-3">
+              {artisan.experience} experience
             </p>
-            <p className="text-center text-purple font-semibold mb-3">
+            <p className="text-center text-terracotta text-sm uppercase tracking-widest font-medium mb-4">
               {artisan.specialty}
             </p>
-            <p className="text-brown-dark/70 text-sm mb-4 text-center">
+            <p className="text-brown-dark font-light text-sm mb-6 text-center leading-relaxed">
               {artisan.description}
             </p>
-            <div className="border-t border-brown-light pt-4">
-              <h4 className="font-semibold text-brown-dark mb-2 text-sm">
-                Achievements:
+            <div className="border-t border-sand pt-6 mt-auto">
+              <h4 className="font-medium text-brown-dark mb-3 text-sm tracking-wide text-center">
+                Achievements
               </h4>
               <ul className="space-y-1">
                 {artisan.achievements.map((achievement, idx) => (
                   <li
                     key={idx}
-                    className="text-xs text-brown-dark/60 flex items-start gap-2"
+                    className="text-xs text-brown-light font-light flex items-start gap-2 justify-center"
                   >
-                    <span className="text-purple mt-1">•</span>
+                    <span className="text-terracotta mt-0.5">•</span>
                     <span>{achievement}</span>
                   </li>
                 ))}

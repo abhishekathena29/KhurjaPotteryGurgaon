@@ -29,25 +29,27 @@ const ProcessSection = () => {
   ]
 
   return (
-    <section className="bg-white rounded-lg shadow-lg p-8 mb-8">
-      <h2 className="text-3xl font-bold mb-6 text-brown-dark text-center">
-        How We Work
-      </h2>
-      <p className="text-center text-brown-dark/70 mb-8 max-w-2xl mx-auto">
-        Our process ensures that you receive authentic, high-quality pottery
-        while supporting local artisans fairly.
-      </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <section className="bg-white border border-sand rounded-xl p-8 md:p-12 mb-12">
+      <div className="text-center mb-12">
+        <h2 className="text-2xl md:text-3xl font-display font-medium mb-4 text-brown-dark tracking-tight">
+          How We Work
+        </h2>
+        <p className="text-brown-light font-light max-w-2xl mx-auto leading-relaxed">
+          Our process ensures that you receive authentic, high-quality pottery
+          while supporting local artisans fairly.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {steps.map((step, idx) => (
-          <div key={idx} className="text-center">
-            <div className="w-20 h-20 bg-brown-light rounded-full flex items-center justify-center mx-auto mb-4 relative">
-              <step.icon className="text-brown-dark" size={32} />
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-purple rounded-full flex items-center justify-center text-white font-bold text-sm">
+          <div key={idx} className="text-center group">
+            <div className="w-20 h-20 bg-sand rounded-full flex items-center justify-center mx-auto mb-6 relative group-hover:scale-105 transition-transform">
+              <step.icon className="text-brown-dark stroke-[1.5]" size={28} />
+              <div className="absolute top-0 right-0 w-6 h-6 bg-white border border-sand rounded-full flex items-center justify-center text-brown-dark font-display font-medium text-xs">
                 {idx + 1}
               </div>
             </div>
-            <h3 className="font-bold text-brown-dark mb-2">{step.title}</h3>
-            <p className="text-sm text-brown-dark/70">{step.description}</p>
+            <h3 className="font-medium text-brown-dark mb-3 text-sm tracking-wide">{step.title}</h3>
+            <p className="text-sm text-brown-light font-light leading-relaxed">{step.description}</p>
           </div>
         ))}
       </div>

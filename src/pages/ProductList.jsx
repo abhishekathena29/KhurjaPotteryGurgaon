@@ -156,8 +156,8 @@ const ProductList = () => {
     return (
       <div className="min-h-screen bg-cream py-16 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg text-brown-dark/60 font-body">Loading products...</p>
+          <div className="w-8 h-8 border-[3px] border-sand border-t-brown-dark rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-brown-light font-light">Loading collection...</p>
         </div>
       </div>
     )
@@ -173,23 +173,23 @@ const ProductList = () => {
           <span className="text-brown-dark font-medium">Products</span>
         </div>
 
-        {/* Active Filter Chips - shown instead of category title */}
+        {/* Active Filter Chips */}
         {activeFilterChips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            <span className="text-sm text-brown-dark/60 font-body">Active Filters:</span>
+          <div className="flex flex-wrap items-center gap-2 mb-8">
+            <span className="text-xs text-brown-light font-medium uppercase tracking-widest">Active Filters:</span>
             {activeFilterChips.map((chip, idx) => (
               <button
                 key={`${chip.type}-${chip.value}-${idx}`}
                 onClick={() => removeFilter(chip.type, chip.value)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brown/10 hover:bg-brown/20 text-brown-dark rounded-full text-xs font-medium transition-colors group"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-sand hover:border-terracotta hover:text-terracotta text-brown-dark rounded-md text-xs font-medium transition-colors group shadow-sm"
               >
                 {chip.label}
-                <X size={12} className="text-brown-dark/40 group-hover:text-brown-dark" />
+                <X size={12} className="text-brown-light group-hover:text-terracotta" />
               </button>
             ))}
             <button
               onClick={clearFilters}
-              className="text-xs text-purple hover:text-purple-dark font-medium transition-colors ml-2"
+              className="text-xs text-brown-light hover:text-terracotta font-medium transition-colors ml-2 border-b border-transparent hover:border-terracotta pb-0.5"
             >
               Clear all
             </button>
@@ -215,9 +215,9 @@ const ProductList = () => {
             </select>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`lg:hidden btn-primary flex items-center gap-2 text-sm py-2 ${showFilters ? 'bg-purple' : ''}`}
+              className={`lg:hidden flex items-center gap-2 text-sm px-4 py-2 border rounded-lg transition-colors ${showFilters ? 'bg-brown-dark text-white border-brown-dark' : 'bg-white text-brown-dark border-sand hover:bg-sand'}`}
             >
-              <Filter size={16} />
+              <Filter size={16} strokeWidth={1.5} />
               Filters
             </button>
           </div>
@@ -227,14 +227,14 @@ const ProductList = () => {
           {/* Left Sidebar - Filters */}
           <aside
             className={`${showFilters ? 'block' : 'hidden'
-              } lg:block w-full lg:w-64 flex-shrink-0 glass-card p-6 h-fit sticky top-32`}
+              } lg:block w-full lg:w-64 flex-shrink-0 bg-white border border-sand rounded-xl p-6 h-fit sticky top-32`}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-display font-bold text-brown-dark">Filters</h2>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-lg font-display font-medium text-brown-dark tracking-tight">Filters</h2>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-xs text-purple hover:text-purple-dark flex items-center gap-1 font-medium"
+                  className="text-xs text-brown-light hover:text-terracotta flex items-center gap-1 font-medium transition-colors"
                 >
                   <X size={14} />
                   Clear
@@ -243,21 +243,21 @@ const ProductList = () => {
             </div>
 
             {/* Category Filter */}
-            <div className="mb-6">
-              <h3 className="font-display font-semibold text-brown-dark mb-3 text-sm">Category</h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+            <div className="mb-8">
+              <h3 className="font-display font-medium text-brown-dark mb-4 text-sm tracking-wide">Category</h3>
+              <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
                 {categories.map((cat) => (
                   <label
                     key={cat}
-                    className="flex items-center gap-2.5 cursor-pointer hover:text-gold-dark transition-colors group"
+                    className="flex items-center gap-3 cursor-pointer hover:text-terracotta transition-colors group"
                   >
                     <input
                       type="checkbox"
                       checked={filters.categories.includes(cat)}
                       onChange={() => handleCategoryFilter(cat)}
-                      className="w-4 h-4 text-gold border-sand rounded focus:ring-gold accent-gold"
+                      className="w-4 h-4 text-terracotta border-sand rounded focus:ring-terracotta accent-terracotta cursor-pointer"
                     />
-                    <span className="text-sm text-brown-dark font-body">{cat}</span>
+                    <span className="text-sm text-brown-dark font-light">{cat}</span>
                   </label>
                 ))}
               </div>
@@ -340,45 +340,43 @@ const ProductList = () => {
           {/* Products Grid */}
           <div className="flex-1">
             {products.length === 0 ? (
-              <div className="text-center py-16 glass-card">
-                <span className="text-6xl mb-4 block">🏺</span>
-                <p className="text-xl text-brown-dark/60 mb-4 font-display">
+              <div className="text-center py-24 bg-white border border-sand rounded-xl">
+                <span className="text-6xl mb-6 block grayscale opacity-20">🏺</span>
+                <p className="text-xl text-brown-dark font-display font-medium tracking-tight mb-2">
                   No products found
                 </p>
-                <p className="text-brown-dark/40 mb-6 font-body">Try adjusting your filters</p>
+                <p className="text-brown-light mb-8 font-light">Try adjusting your filters to find what you're looking for.</p>
                 {hasActiveFilters && (
-                  <button onClick={clearFilters} className="btn-primary">
+                  <button onClick={clearFilters} className="px-6 py-2.5 border border-sand text-brown-dark hover:bg-sand rounded-lg transition-colors font-medium text-sm">
                     Clear Filters
                   </button>
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map((product) => (
-                  <div key={product.id} className="card group">
-                    <Link to={`/product/${product.id}`}>
-                      <div className="aspect-square bg-sand overflow-hidden relative">
-                        {product.images && product.images[0] ? (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-sand to-brown-light flex items-center justify-center">
-                            <span className="text-6xl">🏺</span>
-                          </div>
-                        )}
-                        {product.discount > 0 && (
-                          <span className="absolute top-3 left-3 bg-gradient-to-r from-purple to-purple-dark text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
-                            {product.discount}% OFF
-                          </span>
-                        )}
-                      </div>
+                  <div key={product.id} className="group flex flex-col">
+                    <Link to={`/product/${product.id}`} className="block relative overflow-hidden rounded-xl bg-sand mb-4 aspect-[4/5] border border-transparent hover:border-sand transition-colors">
+                      {product.images && product.images[0] ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-sand flex items-center justify-center">
+                          <span className="text-4xl opacity-20 grayscale">🏺</span>
+                        </div>
+                      )}
+                      {product.discount > 0 && (
+                        <span className="absolute top-3 left-3 bg-terracotta text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded shadow-sm">
+                          {product.discount}% OFF
+                        </span>
+                      )}
                     </Link>
-                    <div className="p-4">
+                    <div className="flex flex-col flex-1 px-1">
                       <Link to={`/product/${product.id}`}>
-                        <h3 className="font-display font-semibold text-brown-dark mb-1 group-hover:text-gold-dark transition-colors line-clamp-2">
+                        <h3 className="font-display font-medium text-lg text-brown-dark mb-1 group-hover:text-terracotta transition-colors line-clamp-2 leading-tight">
                           {product.name}
                         </h3>
                       </Link>
@@ -387,39 +385,31 @@ const ProductList = () => {
                           {product.description}
                         </p>
                       )}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-baseline gap-2">
-                          {product.discount > 0 && (
-                            <span className="text-xs text-purple font-bold">
-                              {product.discount}% OFF
-                            </span>
-                          )}
-                          <span className="text-lg font-bold text-brown-dark">
-                            ₹{product.price}
+                      <div className="flex items-center gap-3 mb-5 mt-auto pt-2">
+                        <span className="font-medium text-brown-dark">₹{product.price}</span>
+                        {product.discount > 0 && (
+                          <span className="text-sm text-brown-light line-through">
+                            ₹{Math.round(product.price / (1 - product.discount / 100))}
                           </span>
-                        </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => addToCart(product)}
-                          className="flex-1 btn-primary text-sm py-2 flex items-center justify-center gap-1.5"
+                          className="flex-1 bg-brown-dark hover:bg-brown text-white text-sm py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
                         >
-                          <Plus size={16} />
+                          <ShoppingCart size={16} />
                           <span className="hidden sm:inline">Add to Cart</span>
-                          <ShoppingCart size={16} className="sm:hidden" />
                         </button>
                         <button
                           onClick={() => addToWishlist(product)}
-                          className={`p-2.5 rounded-xl transition-all ${isInWishlist(product.id)
-                              ? 'bg-purple text-white shadow-md'
-                              : 'bg-sand text-brown-dark hover:bg-purple hover:text-white'
+                          className={`p-2.5 rounded-lg border transition-colors ${isInWishlist(product.id)
+                            ? 'bg-terracotta border-terracotta text-white'
+                            : 'border-sand text-brown-light hover:border-terracotta hover:text-terracotta'
                             }`}
                           aria-label="Add to wishlist"
                         >
-                          <Heart
-                            size={18}
-                            fill={isInWishlist(product.id) ? 'currentColor' : 'none'}
-                          />
+                          <Heart size={18} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} />
                         </button>
                       </div>
                     </div>

@@ -33,8 +33,8 @@ const ProductDetail = () => {
     return (
       <div className="min-h-screen bg-cream py-16 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg text-brown-dark/60 font-body">Loading product...</p>
+          <div className="w-8 h-8 border-[3px] border-sand border-t-brown-dark rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-brown-light font-light">Loading product...</p>
         </div>
       </div>
     )
@@ -42,15 +42,15 @@ const ProductDetail = () => {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-cream py-16">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <span className="text-8xl block mb-4">🏺</span>
-          <h1 className="text-4xl font-display font-bold mb-4 text-brown-dark">
+      <div className="min-h-screen bg-cream py-24 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <span className="text-6xl block mb-6 grayscale opacity-20">🏺</span>
+          <h1 className="text-2xl font-display font-medium mb-3 text-brown-dark tracking-tight">
             Product Not Found
           </h1>
-          <p className="text-brown-dark/60 mb-6 font-body">The product you're looking for doesn't exist.</p>
-          <Link to="/products/All products" className="btn-primary inline-flex items-center gap-2">
-            Browse All Products
+          <p className="text-brown-light mb-8 font-light">We couldn't find the product you're looking for. It may have been removed or is currently unavailable.</p>
+          <Link to="/products/All products" className="px-6 py-3 border border-sand text-brown-dark hover:bg-sand rounded-lg transition-colors font-medium text-sm inline-flex">
+            Browse Collection
           </Link>
         </div>
       </div>
@@ -106,8 +106,8 @@ const ProductDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left: Product Images */}
           <div>
-            <div className="relative glass-card overflow-hidden mb-4">
-              <div className="aspect-square bg-sand relative">
+            <div className="relative overflow-hidden rounded-xl border border-sand mb-4 group">
+              <div className="aspect-[4/5] bg-sand relative">
                 {images[selectedImageIndex] ? (
                   <img
                     src={images[selectedImageIndex]}
@@ -115,13 +115,13 @@ const ProductDetail = () => {
                     className="w-full h-full object-cover transition-opacity duration-300"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-sand to-brown-light flex items-center justify-center">
-                    <span className="text-9xl">🏺</span>
+                  <div className="w-full h-full bg-sand flex items-center justify-center">
+                    <span className="text-6xl grayscale opacity-20">🏺</span>
                   </div>
                 )}
                 {/* Discount badge */}
                 {product.discount > 0 && (
-                  <span className="absolute top-4 left-4 bg-gradient-to-r from-purple to-purple-dark text-white text-sm font-bold px-4 py-1.5 rounded-full shadow-lg">
+                  <span className="absolute top-4 left-4 bg-terracotta text-white text-[10px] tracking-widest uppercase font-bold px-3 py-1.5 rounded-sm shadow-sm">
                     {product.discount}% OFF
                   </span>
                 )}
@@ -130,17 +130,17 @@ const ProductDetail = () => {
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md hover:bg-white text-brown p-2 rounded-full transition-all shadow-md"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white hover:bg-sand text-brown-dark p-2.5 rounded-full transition-all shadow-sm opacity-0 group-hover:opacity-100"
                       aria-label="Previous image"
                     >
-                      <ChevronLeft size={20} />
+                      <ChevronLeft size={20} strokeWidth={1.5} />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md hover:bg-white text-brown p-2 rounded-full transition-all shadow-md"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white hover:bg-sand text-brown-dark p-2.5 rounded-full transition-all shadow-sm opacity-0 group-hover:opacity-100"
                       aria-label="Next image"
                     >
-                      <ChevronRight size={20} />
+                      <ChevronRight size={20} strokeWidth={1.5} />
                     </button>
                   </>
                 )}
@@ -149,14 +149,14 @@ const ProductDetail = () => {
 
             {/* Thumbnail Images */}
             {images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide py-2">
                 {images.map((img, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${index === selectedImageIndex
-                        ? 'border-gold shadow-gold'
-                        : 'border-transparent opacity-60 hover:opacity-100'
+                    className={`w-20 h-20 rounded-lg overflow-hidden border-[1.5px] transition-all flex-shrink-0 bg-sand ${index === selectedImageIndex
+                      ? 'border-brown-dark opacity-100'
+                      : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
                   >
                     <img src={img} alt={`View ${index + 1}`} className="w-full h-full object-cover" />
@@ -167,113 +167,117 @@ const ProductDetail = () => {
           </div>
 
           {/* Right: Product Details */}
-          <div className="glass-card p-8">
-            <div className="mb-4">
+          <div className="bg-white border border-sand rounded-xl p-8 lg:p-10 h-fit sticky top-24">
+            <div className="mb-6">
               {product.category && (
-                <Link to={`/products/${product.category}`} className="badge-gold text-xs mb-2 inline-block hover:bg-gold/20 transition-colors">
+                <Link to={`/products/${product.category}`} className="text-xs uppercase tracking-widest text-brown-light font-medium mb-3 inline-block hover:text-terracotta transition-colors">
                   {product.category}
                 </Link>
               )}
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-brown-dark mb-1">
+              <h1 className="text-3xl lg:text-4xl font-display font-medium text-brown-dark mb-2 tracking-tight">
                 {product.name}
               </h1>
               {product.sku && (
-                <p className="text-brown-dark/40 text-sm font-body">SKU: {product.sku}</p>
+                <p className="text-brown-light text-sm font-light">SKU: {product.sku}</p>
               )}
             </div>
 
             {/* Price */}
-            <div className="mb-6 pb-6 border-b border-sand">
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-bold text-brown-dark">₹{product.price}</span>
+            <div className="mb-8 pb-8 border-b border-sand">
+              <div className="flex items-center gap-4">
+                <span className="text-3xl font-medium text-brown-dark">₹{product.price}</span>
                 {product.discount > 0 && (
-                  <>
-                    <span className="text-lg text-brown-dark/40 line-through">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg text-brown-light line-through font-light">
                       ₹{Math.round(product.price / (1 - product.discount / 100))}
                     </span>
-                    <span className="badge-purple text-xs">Save {product.discount}%</span>
-                  </>
+                    <span className="bg-sand text-brown-dark rounded-md px-2.5 py-1 text-xs font-medium border border-sand shadow-sm">
+                      Save {product.discount}%
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
 
             {/* Description */}
             {product.description && (
-              <div className="mb-6">
-                <h2 className="font-display font-semibold mb-2 text-brown-dark">Description</h2>
-                <p className="text-brown-dark/75 font-body leading-relaxed">{product.description}</p>
+              <div className="mb-8">
+                <h2 className="text-xs uppercase tracking-widest text-brown-light font-medium mb-3">Description</h2>
+                <p className="text-brown-dark/80 font-light leading-relaxed">{product.description}</p>
               </div>
             )}
 
             {/* Dimensions */}
             {product.dimensions && (
-              <div className="mb-6">
-                <h2 className="font-display font-semibold mb-2 text-brown-dark">Dimensions</h2>
-                <p className="text-brown-dark/75 font-body">{product.dimensions}</p>
+              <div className="mb-8">
+                <h2 className="text-xs uppercase tracking-widest text-brown-light font-medium mb-3">Dimensions</h2>
+                <p className="text-brown-dark/80 font-light">{product.dimensions}</p>
               </div>
             )}
 
             {/* Color & Size */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-6 mb-8">
               {product.color && (
                 <div>
-                  <span className="text-xs text-brown-dark/50 font-body">Color</span>
-                  <p className="font-medium text-brown-dark font-body">{product.color}</p>
+                  <span className="text-xs uppercase tracking-widest text-brown-light font-medium block mb-1">Color</span>
+                  <p className="font-medium text-brown-dark">{product.color}</p>
                 </div>
               )}
               {product.size && (
                 <div>
-                  <span className="text-xs text-brown-dark/50 font-body">Size</span>
-                  <p className="font-medium text-brown-dark font-body">{product.size}</p>
+                  <span className="text-xs uppercase tracking-widest text-brown-light font-medium block mb-1">Size</span>
+                  <p className="font-medium text-brown-dark">{product.size}</p>
                 </div>
               )}
             </div>
 
             {/* Quantity */}
-            <div className="mb-6">
-              <h2 className="font-display font-semibold mb-3 text-brown-dark">Quantity</h2>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 bg-sand hover:bg-brown-light/30 text-brown-dark rounded-xl transition-colors flex items-center justify-center"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="text-xl font-semibold w-12 text-center font-body">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 bg-sand hover:bg-brown-light/30 text-brown-dark rounded-xl transition-colors flex items-center justify-center"
-                >
-                  <Plus size={18} />
-                </button>
+            <div className="mb-8">
+              <h2 className="text-xs uppercase tracking-widest text-brown-light font-medium mb-3">Quantity</h2>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border border-sand rounded-lg overflow-hidden bg-white">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-10 h-10 hover:bg-sand text-brown-dark transition-colors flex items-center justify-center border-r border-sand"
+                  >
+                    <Minus size={16} strokeWidth={1.5} />
+                  </button>
+                  <span className="text-base font-medium w-12 text-center select-none">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-10 h-10 hover:bg-sand text-brown-dark transition-colors flex items-center justify-center border-l border-sand"
+                  >
+                    <Plus size={16} strokeWidth={1.5} />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Delivery Options */}
-            <div className="mb-6 pb-6 border-b border-sand">
-              <h2 className="font-display font-semibold mb-3 text-brown-dark">Delivery Option</h2>
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-sand hover:border-gold/30 transition-colors">
+            <div className="mb-8 pb-8 border-b border-sand">
+              <h2 className="text-xs uppercase tracking-widest text-brown-light font-medium mb-3">Delivery Option</h2>
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer p-4 rounded-lg border border-sand hover:border-terracotta/50 transition-colors bg-white">
                   <input
                     type="radio"
                     name="delivery"
                     value="pickup"
                     checked={deliveryOption === 'pickup'}
                     onChange={(e) => setDeliveryOption(e.target.value)}
-                    className="w-4 h-4 text-gold accent-gold"
+                    className="w-4 h-4 text-terracotta accent-terracotta border-sand"
                   />
-                  <span className="text-brown-dark font-body">Pick up (Free)</span>
+                  <span className="text-brown-dark font-medium text-sm">Pick up (Free)</span>
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-sand hover:border-gold/30 transition-colors">
+                <label className="flex items-center gap-3 cursor-pointer p-4 rounded-lg border border-sand hover:border-terracotta/50 transition-colors bg-white">
                   <input
                     type="radio"
                     name="delivery"
                     value="delivery"
                     checked={deliveryOption === 'delivery'}
                     onChange={(e) => setDeliveryOption(e.target.value)}
-                    className="w-4 h-4 text-gold accent-gold"
+                    className="w-4 h-4 text-terracotta accent-terracotta border-sand"
                   />
-                  <span className="text-brown-dark font-body">Delivery by Porter</span>
+                  <span className="text-brown-dark font-medium text-sm">Delivery by Porter</span>
                 </label>
 
                 {deliveryOption === 'delivery' && (
@@ -308,37 +312,43 @@ const ProductDetail = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={handleAddToCart}
-                className="btn-primary flex-1 flex items-center justify-center gap-2 py-3"
+                className="bg-brown-dark hover:bg-brown text-white flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg transition-colors font-medium shadow-sm"
               >
-                <ShoppingCart size={20} />
+                <ShoppingCart size={18} strokeWidth={2} />
                 Add to Cart
               </button>
               <button
                 onClick={handleWishlistToggle}
-                className={`p-4 rounded-xl transition-all ${isInWishlist(product.id)
-                    ? 'bg-purple text-white shadow-md'
-                    : 'bg-sand text-brown-dark hover:bg-purple hover:text-white'
+                className={`p-3.5 rounded-lg border transition-colors flex items-center justify-center w-14 ${isInWishlist(product.id)
+                  ? 'bg-terracotta border-terracotta text-white shadow-sm'
+                  : 'border-sand bg-white text-brown-light hover:border-terracotta hover:text-terracotta'
                   }`}
                 aria-label="Toggle wishlist"
               >
-                <Heart size={22} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} />
+                <Heart size={20} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} strokeWidth={isInWishlist(product.id) ? 1 : 1.5} />
               </button>
             </div>
 
             {/* Artisan info */}
             {product.ownerName && (
-              <div className="mt-4 p-4 bg-gold/5 rounded-xl border border-gold/10">
-                <p className="text-xs text-brown-dark/50 font-body">Crafted by</p>
-                <p className="font-display font-semibold text-brown-dark">{product.ownerName}</p>
+              <div className="mt-8 p-5 bg-sand/30 rounded-lg border border-sand flex items-center gap-4">
+                <div className="w-10 h-10 bg-cream rounded-full border border-sand flex items-center justify-center text-brown-dark font-display font-medium">
+                  {product.ownerName.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-brown-light font-medium mb-0.5">Crafted by</p>
+                  <p className="font-display font-medium text-brown-dark">{product.ownerName}</p>
+                </div>
               </div>
             )}
 
-            <div className="mt-4 p-4 bg-sand/50 rounded-xl">
-              <p className="text-xs text-brown-dark/50 font-body">
-                <strong>Note:</strong> All products are handcrafted and may have slight variations, making each piece unique.
+            <div className="mt-6 pt-6 border-t border-sand">
+              <p className="text-sm text-brown-light font-light leading-relaxed">
+                <span className="font-medium text-brown-dark mr-2">Note:</span>
+                All products are handcrafted and may have subtle variations in color, texture, and size. This makes each piece uniquely beautiful.
               </p>
             </div>
           </div>

@@ -10,24 +10,24 @@ const Wishlist = () => {
   if (wishlist.length === 0) {
     return (
       <div className="min-h-screen bg-cream py-12">
-        <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-8 text-brown-dark">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <h1 className="text-3xl md:text-5xl font-display font-medium mb-12 text-brown-dark tracking-tight">
             My Wishlist
           </h1>
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+          <div className="bg-white border border-sand rounded-xl p-16 flex flex-col items-center">
             <Heart
-              size={64}
-              className="mx-auto mb-4 text-brown-light"
+              size={48}
+              className="mx-auto mb-6 text-brown-light stroke-[1.5]"
               fill="none"
             />
-            <h2 className="text-2xl font-bold mb-2 text-brown-dark">
+            <h2 className="text-2xl font-display font-medium mb-3 text-brown-dark tracking-tight">
               Your Wishlist is Empty
             </h2>
-            <p className="text-brown-dark/60 mb-6">
-              Start adding products you love to your wishlist.
+            <p className="text-brown-light font-light mb-8 max-w-sm">
+              Save your favorite pieces here to easily find them later.
             </p>
-            <Link to="/products/All products" className="btn-primary">
-              Browse Products
+            <Link to="/products/All products" className="px-8 py-3 bg-brown-dark hover:bg-brown text-white rounded-lg transition-colors font-medium">
+              Browse Collection
             </Link>
           </div>
         </div>
@@ -38,48 +38,49 @@ const Wishlist = () => {
   return (
     <div className="min-h-screen bg-cream py-12">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-4xl font-bold mb-8 text-brown-dark">
+        <h1 className="text-3xl md:text-5xl font-display font-medium mb-12 text-brown-dark tracking-tight">
           My Wishlist
         </h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {wishlist.map((product) => (
-            <div key={product.id} className="card">
-              <Link to={`/product/${product.id}`}>
-                <div className="aspect-square bg-brown-light overflow-hidden">
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-brown-light to-brown-dark flex items-center justify-center">
-                      <span className="text-6xl">🏺</span>
-                    </div>
-                  )}
-                </div>
+            <div key={product.id} className="group flex flex-col">
+              <Link to={`/product/${product.id}`} className="block relative overflow-hidden rounded-xl bg-sand mb-4 aspect-[4/5] border border-transparent hover:border-sand transition-colors">
+                {product.images && product.images[0] ? (
+                  <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-sand flex items-center justify-center">
+                    <span className="text-4xl opacity-20 grayscale">🏺</span>
+                  </div>
+                )}
+                {product.discount > 0 && (
+                  <span className="absolute top-3 left-3 bg-terracotta text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded shadow-sm">
+                    {product.discount}% OFF
+                  </span>
+                )}
               </Link>
-              <div className="p-4">
+              <div className="flex flex-col flex-1 px-1">
                 <Link to={`/product/${product.id}`}>
-                  <h3 className="font-semibold text-brown-dark mb-1 hover:text-purple transition-colors line-clamp-2">
+                  <h3 className="font-display font-medium text-lg text-brown-dark mb-1 group-hover:text-terracotta transition-colors line-clamp-2 leading-tight">
                     {product.name}
                   </h3>
                 </Link>
-                <p className="text-sm text-brown-dark/70 mb-2 line-clamp-2">
+                <p className="text-sm text-brown-light font-light mb-2 line-clamp-2">
                   {product.description}
                 </p>
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    {product.discount > 0 && (
-                      <span className="text-sm text-purple font-semibold mr-2">
-                        {product.discount}% OFF
-                      </span>
-                    )}
-                    <span className="text-lg font-bold text-brown-dark">
-                      ₹{product.price}
+                <div className="flex items-center gap-3 mb-5 mt-auto pt-2">
+                  <span className="font-medium text-brown-dark">
+                    ₹{product.price}
+                  </span>
+                  {product.discount > 0 && (
+                    <span className="text-sm text-brown-light line-through font-light">
+                      ₹{Math.round(product.price / (1 - product.discount / 100))}
                     </span>
-                  </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -87,18 +88,17 @@ const Wishlist = () => {
                       addToCart(product)
                       removeFromWishlist(product.id)
                     }}
-                    className="flex-1 bg-brown hover:bg-brown-dark text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 bg-brown-dark hover:bg-brown text-white py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                   >
-                    <Plus size={18} />
+                    <ShoppingCart size={16} />
                     <span className="hidden sm:inline">Add to Cart</span>
-                    <ShoppingCart size={18} className="sm:hidden" />
                   </button>
                   <button
                     onClick={() => removeFromWishlist(product.id)}
-                    className="p-2 bg-purple text-white rounded-lg hover:bg-purple-dark transition-colors"
+                    className="p-2.5 rounded-lg border border-sand bg-white text-brown-light hover:border-terracotta hover:text-terracotta transition-colors flex items-center justify-center"
                     aria-label="Remove from wishlist"
                   >
-                    <Trash2 size={20} />
+                    <Trash2 size={18} strokeWidth={1.5} />
                   </button>
                 </div>
               </div>

@@ -54,19 +54,16 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
 
   return (
     <>
-      <nav className="bg-white/95 backdrop-blur-md sticky top-[73px] md:top-[77px] z-40 shadow-sm border-b border-sand">
-        {/* Pottery motif decoration */}
-        <div className="pottery-motif absolute inset-0 pointer-events-none opacity-30"></div>
-
+      <nav className="bg-white/95 backdrop-blur-md sticky top-[69px] md:top-[73px] z-40 shadow-sm border-b border-sand">
         <div className="max-w-7xl mx-auto px-4 relative">
-          <div className="flex items-center justify-center gap-1 md:gap-2 py-2 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-center gap-2 py-3 overflow-x-auto scrollbar-hide">
 
             {/* Home */}
             <Link
               to="/"
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/')
-                  ? 'bg-gradient-to-r from-brown to-brown-dark text-white shadow-warm'
-                  : 'text-brown-dark hover:bg-sand hover:text-brown'
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/')
+                ? 'bg-sand text-brown-dark'
+                : 'text-brown-light hover:bg-cream hover:text-brown-dark'
                 }`}
               onClick={() => setIsMenuOpen(false)}
             >
@@ -82,9 +79,9 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             >
               <button
                 ref={buttonRef}
-                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium ${isActive('/products')
-                    ? 'bg-gradient-to-r from-brown to-brown-dark text-white shadow-warm'
-                    : 'text-brown-dark hover:bg-sand hover:text-brown'
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${isActive('/products')
+                  ? 'bg-sand text-brown-dark'
+                  : 'text-brown-light hover:bg-cream hover:text-brown-dark'
                   }`}
               >
                 Products
@@ -98,9 +95,9 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Best Sellers */}
             <Link
               to="/products/Best Sellers"
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium whitespace-nowrap ${location.pathname === '/products/Best Sellers'
-                  ? 'bg-gradient-to-r from-brown to-brown-dark text-white shadow-warm'
-                  : 'text-brown-dark hover:bg-sand hover:text-brown'
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap ${location.pathname === '/products/Best Sellers'
+                ? 'bg-sand text-brown-dark'
+                : 'text-brown-light hover:bg-cream hover:text-brown-dark'
                 }`}
               onClick={() => setIsMenuOpen(false)}
             >
@@ -110,9 +107,9 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Contact Us */}
             <Link
               to="/contact"
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/contact')
-                  ? 'bg-gradient-to-r from-brown to-brown-dark text-white shadow-warm'
-                  : 'text-brown-dark hover:bg-sand hover:text-brown'
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/contact')
+                ? 'bg-sand text-brown-dark'
+                : 'text-brown-light hover:bg-cream hover:text-brown-dark'
                 }`}
               onClick={() => setIsMenuOpen(false)}
             >
@@ -122,9 +119,9 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* About Us */}
             <Link
               to="/about"
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/about')
-                  ? 'bg-gradient-to-r from-brown to-brown-dark text-white shadow-warm'
-                  : 'text-brown-dark hover:bg-sand hover:text-brown'
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/about')
+                ? 'bg-sand text-brown-dark'
+                : 'text-brown-light hover:bg-cream hover:text-brown-dark'
                 }`}
               onClick={() => setIsMenuOpen(false)}
             >
@@ -134,9 +131,9 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Request A Product */}
             <Link
               to="/request-product"
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/request-product')
-                  ? 'bg-gradient-to-r from-brown to-brown-dark text-white shadow-warm'
-                  : 'text-brown-dark hover:bg-sand hover:text-brown'
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap ${isActive('/request-product')
+                ? 'bg-sand text-brown-dark'
+                : 'text-brown-light hover:bg-cream hover:text-brown-dark'
                 }`}
               onClick={() => setIsMenuOpen(false)}
             >
@@ -158,7 +155,7 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
           />
           <div
             ref={dropdownRef}
-            className="fixed bg-white rounded-2xl shadow-warm-lg min-w-[220px] z-[50] border border-sand overflow-hidden animate-fade-in"
+            className="fixed bg-white rounded-xl shadow-glass min-w-[220px] z-[50] border border-sand overflow-hidden animate-fade-in"
             onMouseEnter={() => {
               if (timeoutRef.current) clearTimeout(timeoutRef.current)
               setIsProductsOpen(true)
@@ -169,16 +166,15 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             {/* Bridge area */}
             <div className="h-2 -mt-2 -mx-1" />
             <div className="py-2">
-              {/* All Products - First option */}
               <Link
                 to="/products/All products"
-                className="flex items-center gap-2 px-5 py-2.5 text-brown-dark hover:bg-gradient-to-r hover:from-gold/10 hover:to-transparent hover:text-brown transition-all text-sm font-semibold border-b border-sand/50"
+                className="flex items-center gap-2 px-5 py-2.5 text-brown-dark hover:bg-cream transition-all text-sm font-medium border-b border-sand/50"
                 onClick={() => {
                   setIsProductsOpen(false)
                   setIsMenuOpen(false)
                 }}
               >
-                🏺 All Products
+                All Products
               </Link>
 
               {categories && categories.length > 0 ? (
@@ -186,7 +182,7 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
                   <Link
                     key={category}
                     to={`/products/${category}`}
-                    className="block px-5 py-2.5 text-brown-dark hover:bg-gradient-to-r hover:from-sand/50 hover:to-transparent hover:text-brown transition-all text-sm"
+                    className="block px-5 py-2.5 text-brown-light hover:bg-cream hover:text-brown-dark transition-all text-sm"
                     onClick={() => {
                       setIsProductsOpen(false)
                       setIsMenuOpen(false)
@@ -196,7 +192,7 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
                   </Link>
                 ))
               ) : (
-                <div className="px-5 py-2 text-brown-dark/40 text-sm">No categories</div>
+                <div className="px-5 py-2 text-brown-light text-sm">No categories</div>
               )}
             </div>
           </div>
@@ -205,15 +201,15 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-[120px] bg-white/98 backdrop-blur-lg z-[45] shadow-warm-lg border-b border-sand animate-slide-in">
+        <div className="md:hidden fixed inset-x-0 top-[120px] bg-white/98 backdrop-blur-lg z-[45] shadow-glass border-b border-sand animate-slide-in">
           <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
             {navItems.map(({ path, label, icon: Icon }) => (
               <Link
                 key={path}
                 to={path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive(path)
-                    ? 'bg-gradient-to-r from-brown to-brown-dark text-white'
-                    : 'text-brown-dark hover:bg-sand'
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive(path)
+                  ? 'bg-sand text-brown-dark'
+                  : 'text-brown-light hover:bg-cream'
                   }`}
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -223,20 +219,20 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             ))}
             <Link
               to="/products/All products"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive('/products')
-                  ? 'bg-gradient-to-r from-brown to-brown-dark text-white'
-                  : 'text-brown-dark hover:bg-sand'
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive('/products')
+                ? 'bg-sand text-brown-dark'
+                : 'text-brown-light hover:bg-cream'
                 }`}
               onClick={() => setIsMenuOpen(false)}
             >
-              🏺 All Products
+              All Products
             </Link>
             <Link
               to="/products/Best Sellers"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-brown-dark hover:bg-sand transition-all"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-brown-light hover:bg-cream transition-all"
               onClick={() => setIsMenuOpen(false)}
             >
-              ⭐ Best Sellers
+              Best Sellers
             </Link>
           </div>
         </div>

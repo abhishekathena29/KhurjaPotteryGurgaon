@@ -28,7 +28,7 @@ const NewsBar = () => {
   }
 
   return (
-    <div className="bg-gradient-to-r from-gold-dark via-gold to-gold-dark text-brown-dark py-1.5 px-4 text-xs font-medium">
+    <div className="bg-sand text-brown-dark py-2 px-4 text-xs font-medium border-b border-cream">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <button
           onClick={prevNews}
