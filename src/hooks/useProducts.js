@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import { mockProducts } from '../data/mockData'
 
 export const useProducts = () => {
   const [products, setProducts] = useState([])
@@ -36,18 +35,12 @@ export const useProducts = () => {
       // Only show active products on the main site
       const activeProducts = productsData.filter(p => p.isActive !== false)
 
-      if (activeProducts.length > 0) {
-        setProducts(activeProducts)
-      } else {
-        // Fall back to mock data if no Firebase products
-        setProducts(mockProducts)
-      }
+      setProducts(activeProducts)
       setError(null)
     } catch (err) {
       console.error('Error fetching products:', err)
       setError(err.message)
-      // Fallback to mock data on error
-      setProducts(mockProducts)
+      setProducts([])
     } finally {
       setLoading(false)
     }

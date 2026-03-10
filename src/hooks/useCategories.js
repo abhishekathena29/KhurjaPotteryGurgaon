@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import { mockCategories } from '../data/mockData'
 
 export const useCategories = () => {
   const [categories, setCategories] = useState([])
@@ -21,15 +20,13 @@ export const useCategories = () => {
       if (categoryNames.length > 0) {
         setCategories(categoryNames)
       } else {
-        // Fall back to mock categories if Firebase is empty
-        setCategories(mockCategories)
+        setCategories([])
       }
       setError(null)
     } catch (err) {
       console.error('Error fetching categories:', err)
       setError(err.message)
-      // Fallback to mock categories
-      setCategories(mockCategories)
+      setCategories([])
     } finally {
       setLoading(false)
     }
