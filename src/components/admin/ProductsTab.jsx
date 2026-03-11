@@ -64,9 +64,24 @@ const ProductsTab = () => {
 
   const fetchCategories = async () => {
     try {
-      const snapshot = await getDocs(collection(db, 'categories'))
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-      setCategories(data)
+      const [categoriesSnapshot, productsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'categories')),
+        getDocs(collection(db, 'products'))
+      ])
+
+      const catsFromDb = categoriesSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const productCats = productsSnapshot.docs
+        .map(d => d.data().category)
+        .filter(Boolean)
+
+      const uniqueNames = [...new Set([...catsFromDb.map(c => c.name), ...productCats])]
+
+      const combinedCategories = uniqueNames.map(name => {
+        const existingCat = catsFromDb.find(c => c.name === name)
+        return existingCat || { id: name, name }
+      }).sort((a, b) => a.name.localeCompare(b.name))
+
+      setCategories(combinedCategories)
     } catch (err) {
       console.error('Error fetching categories:', err)
     }

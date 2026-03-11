@@ -10,15 +10,25 @@ export const useCategories = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      const querySnapshot = await getDocs(collection(db, 'categories'))
-      const categoriesData = querySnapshot.docs.map((doc) => ({
+      const [categoriesSnapshot, productsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'categories')),
+        getDocs(collection(db, 'products'))
+      ])
+
+      const categoriesData = categoriesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
       const categoryNames = categoriesData.map((cat) => cat.name).filter(Boolean)
 
-      if (categoryNames.length > 0) {
-        setCategories(categoryNames)
+      const productCategories = productsSnapshot.docs
+        .map((doc) => doc.data().category)
+        .filter(Boolean)
+
+      const allCategoryNames = [...new Set([...categoryNames, ...productCategories])].sort()
+
+      if (allCategoryNames.length > 0) {
+        setCategories(allCategoryNames)
       } else {
         setCategories([])
       }

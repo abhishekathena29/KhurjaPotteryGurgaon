@@ -79,6 +79,7 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             >
               <button
                 ref={buttonRef}
+                onClick={() => setIsProductsOpen(!isProductsOpen)}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${isActive('/products')
                   ? 'bg-sand text-brown-dark'
                   : 'text-brown-light hover:bg-cream hover:text-brown-dark'
@@ -234,6 +235,28 @@ const Navigation = ({ isMenuOpen, setIsMenuOpen }) => {
             >
               Best Sellers
             </Link>
+
+            {/* Mobile Categories */}
+            {categories && categories.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-sand/50">
+                <p className="px-4 py-2 text-xs font-semibold text-brown-light uppercase tracking-wider">
+                  Select Category
+                </p>
+                {categories.map((category) => (
+                  <Link
+                    key={category}
+                    to={`/products/${category}`}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${isActive(`/products/${category}`)
+                      ? 'bg-sand text-brown-dark'
+                      : 'text-brown-light hover:bg-cream'
+                      }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {category}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
