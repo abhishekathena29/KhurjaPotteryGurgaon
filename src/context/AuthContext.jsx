@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { auth } from '../config/firebase'
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
 
 const AuthContext = createContext()
 
@@ -11,32 +13,29 @@ export const useAuth = () => {
 }
 
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const saved = localStorage.getItem('adminAuth')
-    return saved === 'true'
-  })
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    localStorage.setItem('adminAuth', isAuthenticated.toString())
-  }, [isAuthenticated])
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user)
+      setLoading(false)
+    })
 
-  const login = (email, password) => {
-    // Hardcoded credentials
-    if (email === 'admin@123' && password === 'admin123') {
-      setIsAuthenticated(true)
-      return true
-    }
-    return false
+    return () => unsubscribe()
+  }, [])
+
+  const login = async (email, password) => {
+    await signInWithEmailAndPassword(auth, email, password)
   }
 
-  const logout = () => {
-    setIsAuthenticated(false)
+  const logout = async () => {
+    await signOut(auth)
   }
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   )
 }
-

@@ -10,14 +10,15 @@ const Login = () => {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (login(email, password)) {
+    try {
+      await login(email, password)
       navigate('/admin/dashboard')
-    } else {
-      setError('Invalid email or password')
+    } catch (err) {
+      setError(err.message || 'Failed to login')
     }
   }
 
@@ -92,11 +93,6 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-brown-dark/60">
-            <p>Default credentials:</p>
-            <p className="font-mono">Email: admin@123</p>
-            <p className="font-mono">Password: admin123</p>
-          </div>
         </div>
       </div>
     </div>
