@@ -14,6 +14,9 @@ const Contact = lazy(() => import('./pages/Contact'))
 const About = lazy(() => import('./pages/About'))
 const RequestProduct = lazy(() => import('./pages/RequestProduct'))
 const Cart = lazy(() => import('./pages/Cart'))
+const Checkout = lazy(() => import('./pages/Checkout'))
+const Login = lazy(() => import('./pages/Login'))
+const Signup = lazy(() => import('./pages/Signup'))
 const Wishlist = lazy(() => import('./pages/Wishlist'))
 const ShippingPolicy = lazy(() => import('./pages/ShippingPolicy'))
 const ReturnPolicy = lazy(() => import('./pages/ReturnPolicy'))
@@ -66,6 +69,9 @@ function App() {
                           <Route path="/products/:category" element={<ProductList />} />
                           <Route path="/product/:id" element={<ProductDetail />} />
                           <Route path="/cart" element={<Cart />} />
+                          <Route path="/checkout" element={<Checkout />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/signup" element={<Signup />} />
                           <Route path="/wishlist" element={<Wishlist />} />
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/shipping-policy" element={<ShippingPolicy />} />

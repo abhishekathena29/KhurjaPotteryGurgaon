@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Package, Tag, Users } from 'lucide-react'
+import { LogOut, Package, Tag, Users, ShoppingBag } from 'lucide-react'
 import CategoriesTab from '../../components/admin/CategoriesTab'
 import ProductsTab from '../../components/admin/ProductsTab'
 import SellersTab from '../../components/admin/SellersTab'
+import OrdersTab from '../../components/admin/OrdersTab'
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState('products')
+  const [activeTab, setActiveTab] = useState('orders')
   const { logout } = useAuth()
   const navigate = useNavigate()
 
@@ -17,6 +18,7 @@ const Dashboard = () => {
   }
 
   const tabs = [
+    { id: 'orders', label: 'Orders', icon: ShoppingBag },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'categories', label: 'Categories', icon: Tag },
     { id: 'sellers', label: 'Sellers', icon: Users },
@@ -64,6 +66,7 @@ const Dashboard = () => {
 
       {/* Tab Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {activeTab === 'orders' && <OrdersTab />}
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'sellers' && <SellersTab />}

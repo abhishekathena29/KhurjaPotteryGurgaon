@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ShoppingCart, Heart, Plus, Filter, X, ChevronRight } from 'lucide-react'
+import { ShoppingCart, Heart, Plus, Filter, X, ChevronRight, Check } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 import { useProducts } from '../hooks/useProducts'
@@ -14,6 +14,13 @@ const ProductList = () => {
   const { categories } = useCategories()
   const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState('')
+  const [addedId, setAddedId] = useState(null)
+
+  const handleAddToCart = (product) => {
+    addToCart(product)
+    setAddedId(product.id)
+    setTimeout(() => setAddedId((curr) => (curr === product.id ? null : curr)), 3000)
+  }
   const [filters, setFilters] = useState({
     categories: [],
     sizes: [],
@@ -395,7 +402,7 @@ const ProductList = () => {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => addToCart(product)}
+                          onClick={() => handleAddToCart(product)}
                           className="flex-1 bg-brown-dark hover:bg-brown text-white text-sm py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
                         >
                           <ShoppingCart size={16} />
@@ -412,6 +419,12 @@ const ProductList = () => {
                           <Heart size={18} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} />
                         </button>
                       </div>
+                      {addedId === product.id && (
+                        <p className="mt-2 flex items-center gap-1.5 text-green-700 text-xs font-medium animate-fade-in">
+                          <Check size={14} strokeWidth={2} />
+                          Added to cart
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}

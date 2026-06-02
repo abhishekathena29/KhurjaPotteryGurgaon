@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ShoppingCart, Heart, Plus, Minus, MapPin, ChevronRight as ChevronR } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ShoppingCart, Heart, Plus, Minus, MapPin, Check, ChevronRight as ChevronR } from 'lucide-react'
 import { useProducts } from '../hooks/useProducts'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
@@ -18,6 +18,7 @@ const ProductDetail = () => {
   const [deliveryOption, setDeliveryOption] = useState('pickup')
   const [pincode, setPincode] = useState('')
   const [deliveryAvailable, setDeliveryAvailable] = useState(null)
+  const [addedToCart, setAddedToCart] = useState(false)
 
   useEffect(() => {
     if (!productsLoading && products.length > 0) {
@@ -57,7 +58,11 @@ const ProductDetail = () => {
     )
   }
 
-  const handleAddToCart = () => addToCart(product, quantity)
+  const handleAddToCart = () => {
+    addToCart(product, quantity)
+    setAddedToCart(true)
+    setTimeout(() => setAddedToCart(false), 3000)
+  }
 
   const handleWishlistToggle = () => {
     if (isInWishlist(product.id)) {
@@ -331,6 +336,15 @@ const ProductDetail = () => {
                 <Heart size={20} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} strokeWidth={isInWishlist(product.id) ? 1 : 1.5} />
               </button>
             </div>
+
+            {/* Added to cart confirmation */}
+            {addedToCart && (
+              <div className="mt-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm font-medium animate-fade-in">
+                <Check size={16} strokeWidth={2} />
+                <span>Added to cart.</span>
+                <Link to="/cart" className="ml-auto underline hover:text-green-800">View cart</Link>
+              </div>
+            )}
 
             {/* Artisan info */}
             {product.ownerName && (
