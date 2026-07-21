@@ -4,6 +4,7 @@ services:
     runtime: docker
     plan: free
     region: singapore
+    branch: vaibhav
     dockerContext: ./functions
     dockerfilePath: ./functions/Dockerfile
     healthCheckPath: /api/health
