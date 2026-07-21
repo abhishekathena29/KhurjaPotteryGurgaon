@@ -231,3 +231,5 @@ orders, seller payouts, best sellers, requests — is documented end-to-end in
 
 Cream `#F5F1E8` · Brown `#8B4513` (light `#D4A574`, dark `#5C2E0A`) · Purple `#6B46C1`
 (light `#B19CD9`, dark `#4C1D95`).
+
+> Deployment note: Production uses Cloudflare Pages, Render, and Cloudinary.
