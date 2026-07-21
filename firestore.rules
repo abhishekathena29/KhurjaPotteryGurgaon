@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function ownsUser(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    match /products/{productId} {
+      allow read: if resource.data.status == 'active' || isAdmin();
+      allow write: if false;
+
+      match /variants/{variantId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /publicConfig/{configId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /commerceConfig/{configId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if ownsUser(userId) || isAdmin();
+      allow create: if ownsUser(userId)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'createdAt']);
+      allow update: if ownsUser(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+
+      match /events/{eventId} {
+        allow read: if isAdmin() ||
+          (signedIn() && get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid);
+        allow write: if false;
+      }
+    }
+
+    match /productRequests/{requestId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /sellers/{sellerId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /sellerLedger/{entryId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /settlements/{settlementId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /bulkJobs/{jobId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

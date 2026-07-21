@@ -4,10 +4,12 @@ import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 import { useAuth } from '../context/AuthContext'
 import { useOrders } from '../hooks/useOrders'
+import { formatMoney } from '../lib/commerce'
 
 const statusStyles = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   confirmed: 'bg-blue-50 text-blue-700 border-blue-200',
+  packed: 'bg-violet-50 text-violet-700 border-violet-200',
   shipped: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   delivered: 'bg-green-50 text-green-700 border-green-200',
   cancelled: 'bg-red-50 text-red-700 border-red-200',
@@ -63,7 +65,7 @@ const Profile = () => {
     navigate('/')
   }
 
-  const pendingCount = orders.filter((o) => o.status === 'pending').length
+  const pendingCount = orders.filter((o) => (o.fulfilmentStatus || o.status) === 'pending').length
   const displayName = user.displayName || user.email?.split('@')[0] || 'Customer'
 
   return (
@@ -139,14 +141,14 @@ const Profile = () => {
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-4 border-b border-sand">
                     <div>
                       <p className="text-xs uppercase tracking-widest text-brown-light font-medium mb-1">
-                        Order #{order.id.substring(0, 8).toUpperCase()}
+                        Order #{order.orderNumber || order.id.substring(0, 8).toUpperCase()}
                       </p>
                       <p className="text-sm text-brown-dark font-light">{formatDate(order.createdAt)}</p>
                     </div>
                     <span
-                      className={`badge border capitalize ${statusStyles[order.status] || statusStyles.pending}`}
+                      className={`badge border capitalize ${statusStyles[order.fulfilmentStatus || order.status] || statusStyles.pending}`}
                     >
-                      {order.status || 'pending'}
+                      {order.fulfilmentStatus || order.status || 'pending'} · Payment {(order.payment?.status || 'pending').replaceAll('_', ' ')}
                     </span>
                   </div>
 
@@ -155,8 +157,9 @@ const Profile = () => {
                       <div key={i} className="flex justify-between items-center text-sm">
                         <span className="text-brown-dark font-light">
                           {item.name} <span className="text-brown-light">× {item.quantity}</span>
+                          <span className="block text-xs text-brown-light">{item.sku || ''}{item.selectedColor?.name ? ` · ${item.selectedColor.name}` : ''}{item.selectedSize ? ` · ${item.selectedSize}` : ''}</span>
                         </span>
-                        <span className="text-brown-dark font-medium">₹{item.price * item.quantity}</span>
+                        <span className="text-brown-dark font-medium">{formatMoney(Number(item.unitSalePricePaise ?? Math.round(item.price * 100)) * item.quantity)}</span>
                       </div>
                     ))}
                   </div>
@@ -167,11 +170,13 @@ const Profile = () => {
                       <span className="font-light">
                         {order.address?.city}{order.address?.pincode ? `, ${order.address.pincode}` : ''}
                         {' · '}
-                        {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}
+                        Online QR Payment
                       </span>
                     </div>
-                    <p className="text-base font-medium text-brown-dark">Total: ₹{order.total}</p>
+                    <p className="text-base font-medium text-brown-dark">Total: {formatMoney(order.grandTotalPaise ?? Math.round(order.total * 100))}</p>
                   </div>
+                  {order.cancellation?.customerMessage && <p className="mt-3 bg-red-50 border border-red-100 text-red-700 rounded-lg p-3 text-sm">{order.cancellation.customerMessage}</p>}
+                  {order.payment?.status === 'verification_pending' && <p className="mt-3 bg-amber-50 border border-amber-100 text-amber-800 rounded-lg p-3 text-sm">Your screenshot has been received. This order will be confirmed after the website owner verifies the payment.</p>}
                 </div>
               ))}
             </div>

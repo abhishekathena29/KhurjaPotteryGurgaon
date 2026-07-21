@@ -1,10 +1,15 @@
 import { Link } from 'react-router-dom'
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import { useCommerceConfig } from '../hooks/useCommerceConfig'
+import { formatMoney } from '../lib/commerce'
 
 const Cart = () => {
-  const { cart, removeFromCart, updateQuantity, getCartTotal, clearCart } =
+  const { cart, removeFromCart, updateQuantity, clearCart } =
     useCart()
+  const { config } = useCommerceConfig()
+  const subtotalPaise = cart.reduce((sum, item) => sum + Number(item.salePricePaise ?? Math.round(item.price * 100)) * item.quantity, 0)
+  const deliveryFeePaise = Number(config?.deliveryFeePaise || 0)
 
   if (cart.length === 0) {
     return (
@@ -56,21 +61,24 @@ const Cart = () => {
                 className="bg-white border border-sand rounded-xl p-6 flex flex-col sm:flex-row gap-6 hover:border-cream transition-colors"
               >
                 <Link
-                  to={`/product/${item.id}`}
+                  to={`/product/${item.productId}`}
                   className="w-full sm:w-32 h-32 bg-sand rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-sand"
                 >
-                  <span className="text-4xl grayscale opacity-20">🏺</span>
+                  {item.images?.[0]?.url ? <img src={item.images[0].url} alt={item.name} className="w-full h-full object-cover" /> : <span className="text-4xl grayscale opacity-20">🏺</span>}
                 </Link>
 
                 <div className="flex-1 flex flex-col">
-                  <Link to={`/product/${item.id}`}>
+                  <Link to={`/product/${item.productId}`}>
                     <h3 className="text-xl font-display font-medium text-brown-dark mb-1 hover:text-terracotta transition-colors line-clamp-2 leading-tight">
                       {item.name}
                     </h3>
                   </Link>
                   <p className="text-brown-light font-light text-sm mb-3">SKU: {item.sku}</p>
+                  <p className="text-brown-light font-light text-sm mb-2">
+                    {item.selectedColor?.name || item.selectedColor}{item.selectedSize ? ` · ${item.selectedSize}` : ''}
+                  </p>
                   <p className="text-lg font-medium text-brown-dark mb-4 mt-auto">
-                    ₹{item.price}
+                    {formatMoney(item.salePricePaise ?? Math.round(item.price * 100))}
                   </p>
 
                   <div className="flex items-center gap-6">
@@ -91,6 +99,7 @@ const Cart = () => {
                           updateQuantity(item.id, item.quantity + 1)
                         }
                         className="w-10 h-10 flex items-center justify-center hover:bg-sand text-brown-dark transition-colors border-l border-sand"
+                        disabled={item.quantity >= item.availableQuantity}
                       >
                         <Plus size={16} strokeWidth={1.5} />
                       </button>
@@ -110,7 +119,7 @@ const Cart = () => {
                 <div className="text-right sm:border-l border-sand sm:pl-6 sm:ml-2 flex flex-col justify-center">
                   <p className="text-xs uppercase tracking-widest text-brown-light font-medium mb-1">Total</p>
                   <p className="text-xl font-medium text-brown-dark">
-                    ₹{item.price * item.quantity}
+                    {formatMoney(Number(item.salePricePaise ?? Math.round(item.price * 100)) * item.quantity)}
                   </p>
                 </div>
               </div>
@@ -127,11 +136,11 @@ const Cart = () => {
               <div className="space-y-4 mb-8">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-brown-light font-light">Subtotal</span>
-                  <span className="font-medium text-brown-dark">₹{getCartTotal()}</span>
+                  <span className="font-medium text-brown-dark">{formatMoney(subtotalPaise)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-brown-light font-light">Estimated Delivery</span>
-                  <span className="font-medium text-brown-dark">₹50</span>
+                  <span className="font-medium text-brown-dark">{config ? formatMoney(deliveryFeePaise) : 'Calculated at checkout'}</span>
                 </div>
                 <div className="border-t border-sand pt-6 mt-6">
                   <div className="flex justify-between items-baseline">
@@ -139,7 +148,7 @@ const Cart = () => {
                       Total
                     </span>
                     <span className="text-2xl font-medium text-brown-dark">
-                      ₹{getCartTotal() + 50}
+                      {formatMoney(subtotalPaise + deliveryFeePaise)}
                     </span>
                   </div>
                   <p className="text-[10px] text-brown-light mt-2 text-right">Tax included directly in prices.</p>
@@ -170,4 +179,3 @@ const Cart = () => {
 }
 
 export default Cart
-

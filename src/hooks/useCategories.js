@@ -1,31 +1,19 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { loadCatalogue } from '../services/catalogueApi'
 
 export const useCategories = () => {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (force = false) => {
     try {
       setLoading(true)
-      const [categoriesSnapshot, productsSnapshot] = await Promise.all([
-        getDocs(collection(db, 'categories')),
-        getDocs(collection(db, 'products'))
-      ])
-
-      const categoriesData = categoriesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+      const catalogue = await loadCatalogue({ force })
+      const categoriesData = catalogue.categories
       const categoryNames = categoriesData.map((cat) => cat.name).filter(Boolean)
 
-      const productCategories = productsSnapshot.docs
-        .map((doc) => doc.data().category)
-        .filter(Boolean)
-
-      const allCategoryNames = [...new Set([...categoryNames, ...productCategories])].sort()
+      const allCategoryNames = [...new Set(categoryNames)].sort()
 
       if (allCategoryNames.length > 0) {
         setCategories(allCategoryNames)
@@ -46,5 +34,5 @@ export const useCategories = () => {
     fetchCategories()
   }, [])
 
-  return { categories, loading, error, refetch: fetchCategories }
+  return { categories, loading, error, refetch: () => fetchCategories(true) }
 }

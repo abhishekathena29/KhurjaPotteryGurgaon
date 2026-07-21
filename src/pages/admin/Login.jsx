@@ -7,7 +7,7 @@ const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const { login } = useAuth()
+  const { loginAdmin, refreshPermissions, logout } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -15,7 +15,12 @@ const Login = () => {
     setError('')
 
     try {
-      await login(email, password)
+      await loginAdmin(email, password)
+      const hasAdminAccess = await refreshPermissions()
+      if (!hasAdminAccess) {
+        await logout()
+        throw new Error('This account does not have administrator access.')
+      }
       navigate('/admin/dashboard')
     } catch (err) {
       setError(err.message || 'Failed to login')
@@ -53,12 +58,12 @@ const Login = () => {
                   size={20}
                 />
                 <input
-                  type="text"
+                  type="email"
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="admin@123"
+                  placeholder="administrator@example.com"
                   required
                 />
               </div>
@@ -82,7 +87,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="admin123"
+                  placeholder="Enter your password"
                   required
                 />
               </div>
@@ -100,4 +105,3 @@ const Login = () => {
 }
 
 export default Login
-

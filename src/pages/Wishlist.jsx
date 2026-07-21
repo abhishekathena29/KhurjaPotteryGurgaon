@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingCart, Plus, Trash2 } from 'lucide-react'
+import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
 import { useWishlist } from '../context/WishlistContext'
 import { useCart } from '../context/CartContext'
+import { formatMoney } from '../lib/commerce'
 
 const Wishlist = () => {
   const { wishlist, removeFromWishlist } = useWishlist()
@@ -48,7 +49,7 @@ const Wishlist = () => {
               <Link to={`/product/${product.id}`} className="block relative overflow-hidden rounded-xl bg-sand mb-4 aspect-[4/5] border border-transparent hover:border-sand transition-colors">
                 {product.images && product.images[0] ? (
                   <img
-                    src={product.images[0]}
+                    src={product.images[0]?.url || product.images[0]}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
@@ -74,11 +75,11 @@ const Wishlist = () => {
                 </p>
                 <div className="flex items-center gap-3 mb-5 mt-auto pt-2">
                   <span className="font-medium text-brown-dark">
-                    ₹{product.price}
+                    {formatMoney(product.salePricePaise ?? Math.round(Number(product.price || 0) * 100))}
                   </span>
                   {product.discount > 0 && (
                     <span className="text-sm text-brown-light line-through font-light">
-                      ₹{Math.round(product.price / (1 - product.discount / 100))}
+                      {formatMoney(product.mrpPaise ?? Math.round(Number(product.price || 0) * 100))}
                     </span>
                   )}
                 </div>
@@ -88,10 +89,11 @@ const Wishlist = () => {
                       addToCart(product)
                       removeFromWishlist(product.id)
                     }}
-                    className="flex-1 bg-brown-dark hover:bg-brown text-white py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                    disabled={Number(product.availableQuantity || 0) <= 0}
+                    className="flex-1 bg-brown-dark hover:bg-brown text-white py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 text-sm disabled:bg-gray-300"
                   >
                     <ShoppingCart size={16} />
-                    <span className="hidden sm:inline">Add to Cart</span>
+                    <span className="hidden sm:inline">{Number(product.availableQuantity || 0) > 0 ? 'Add to Cart' : 'Out of stock'}</span>
                   </button>
                   <button
                     onClick={() => removeFromWishlist(product.id)}
@@ -111,4 +113,3 @@ const Wishlist = () => {
 }
 
 export default Wishlist
-

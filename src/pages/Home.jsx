@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Star, Truck, Shield, Heart, Award, ArrowRight } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
 import { useProducts } from '../hooks/useProducts'
+import { formatMoney } from '../lib/commerce'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 
@@ -13,8 +14,10 @@ const Home = () => {
   const { addToWishlist, isInWishlist } = useWishlist()
   const [currentSlide, setCurrentSlide] = useState(0)
 
-  // Get featured products (best sellers - products with discount)
-  const featuredProducts = products.filter((p) => p.discount > 0).slice(0, 6)
+  const featuredProducts = products
+    .filter((product) => product.isBestSeller || product.merchandising?.featured)
+    .sort((a, b) => (a.salesMetrics?.bestSellerRank || Number.MAX_SAFE_INTEGER) - (b.salesMetrics?.bestSellerRank || Number.MAX_SAFE_INTEGER))
+    .slice(0, 6)
 
   const slides = [
     {
@@ -186,9 +189,9 @@ const Home = () => {
               {featuredProducts.map((product) => (
                 <div key={product.id} className="group flex flex-col">
                   <Link to={`/product/${product.id}`} className="block relative overflow-hidden rounded-xl bg-sand mb-4 aspect-[4/5]">
-                    {product.images && product.images[0] ? (
+                    {product.images && product.images[0]?.url ? (
                       <img
-                        src={product.images[0]}
+                        src={product.images[0].url}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                       />
@@ -210,19 +213,20 @@ const Home = () => {
                       </h3>
                     </Link>
                     <div className="flex items-center gap-3 mb-5 mt-auto pt-2">
-                      <span className="font-medium text-brown-dark">₹{product.price}</span>
+                      <span className="font-medium text-brown-dark">{formatMoney(product.salePricePaise)}</span>
                       {product.discount > 0 && (
                         <span className="text-sm text-brown-light line-through">
-                          ₹{Math.round(product.price / (1 - product.discount / 100))}
+                          {formatMoney(product.mrpPaise)}
                         </span>
                       )}
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => addToCart(product)}
-                        className="flex-1 bg-brown-dark hover:bg-brown text-white text-sm py-2.5 rounded-lg transition-colors font-medium"
+                        disabled={product.availableQuantity <= 0}
+                        className="flex-1 bg-brown-dark hover:bg-brown text-white text-sm py-2.5 rounded-lg transition-colors font-medium disabled:bg-gray-300"
                       >
-                        Add to Cart
+                        {product.availableQuantity > 0 ? 'Add to Cart' : 'Out of stock'}
                       </button>
                       <button
                         onClick={() => addToWishlist(product)}

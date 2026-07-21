@@ -1,199 +1,84 @@
-import { useState, useEffect } from 'react'
-import {
-    collection,
-    addDoc,
-    deleteDoc,
-    doc,
-    getDocs,
-    updateDoc,
-} from 'firebase/firestore'
-import { db } from '../../config/firebase'
-import { Plus, Edit2, Trash2, X, Users, Save } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { adminApi } from '../../services/commerceApi'
+import { formatMoney } from '../../lib/commerce'
+import { Edit2, Plus, Save, Users, X } from 'lucide-react'
+
+const emptySeller = {
+  id: '', name: '', phone: '', email: '', address: '', payoutMethod: '', payoutDetails: '',
+  notificationChannels: ['email'], status: 'active',
+}
 
 const SellersTab = () => {
-    const [sellers, setSellers] = useState([])
-    const [showModal, setShowModal] = useState(false)
-    const [editingSeller, setEditingSeller] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [saving, setSaving] = useState(false)
-    const [formData, setFormData] = useState({
-        name: '',
-        phone: '',
-        email: '',
-        address: '',
-    })
+  const [sellers, setSellers] = useState([])
+  const [ledger, setLedger] = useState([])
+  const [settlements, setSettlements] = useState([])
+  const [form, setForm] = useState(emptySeller)
+  const [showModal, setShowModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-    useEffect(() => {
-        fetchSellers()
-    }, [])
+  const load = async () => {
+    setLoading(true)
+    try {
+      const data = await adminApi.getSnapshot(['sellers', 'sellerLedger', 'settlements'])
+      setSellers(data.sellers)
+      setLedger(data.sellerLedger)
+      setSettlements(data.settlements)
+    } catch (nextError) { setError(nextError.message) } finally { setLoading(false) }
+  }
 
-    const fetchSellers = async () => {
-        try {
-            setLoading(true)
-            const snapshot = await getDocs(collection(db, 'sellers'))
-            const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-            setSellers(data)
-        } catch (err) {
-            console.error('Error fetching sellers:', err)
-        } finally {
-            setLoading(false)
-        }
+  useEffect(() => { load() }, [])
+
+  const totals = useMemo(() => sellers.reduce((result, seller) => {
+    const entries = ledger.filter((entry) => entry.sellerId === seller.id)
+    result[seller.id] = {
+      payable: entries.filter((entry) => entry.status === 'payable').reduce((sum, entry) => sum + Number(entry.amountPaise || 0), 0),
+      pending: entries.filter((entry) => entry.status === 'pending').reduce((sum, entry) => sum + Number(entry.amountPaise || 0), 0),
+      paid: entries.filter((entry) => entry.status === 'paid').reduce((sum, entry) => sum + Number(entry.amountPaise || 0), 0),
     }
+    return result
+  }, {}), [sellers, ledger])
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target
-        setFormData((prev) => ({ ...prev, [name]: value }))
-    }
+  const save = async (event) => {
+    event.preventDefault(); setSaving(true); setError('')
+    try {
+      await adminApi.saveSeller({ ...form, id: form.id || undefined })
+      setShowModal(false); setForm(emptySeller); await load()
+    } catch (nextError) { setError(nextError.message) } finally { setSaving(false) }
+  }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        if (!formData.name.trim()) {
-            alert('Please enter seller name')
-            return
-        }
-        setSaving(true)
-        try {
-            if (editingSeller) {
-                await updateDoc(doc(db, 'sellers', editingSeller.id), formData)
-            } else {
-                await addDoc(collection(db, 'sellers'), formData)
-            }
-            setShowModal(false)
-            setEditingSeller(null)
-            setFormData({ name: '', phone: '', email: '', address: '' })
-            fetchSellers()
-        } catch (err) {
-            console.error('Error saving seller:', err)
-            alert('Error saving seller. Please try again.')
-        } finally {
-            setSaving(false)
-        }
-    }
+  const createSettlement = async (seller) => {
+    const entryIds = ledger.filter((entry) => entry.sellerId === seller.id && entry.status === 'payable').map((entry) => entry.id)
+    if (!entryIds.length) return
+    if (!window.confirm(`Create an approved settlement for ${seller.name} using ${entryIds.length} payable entries?`)) return
+    try { await adminApi.createSettlement({ sellerId: seller.id, entryIds, adjustmentsPaise: 0, adjustmentNote: '' }); await load() }
+    catch (nextError) { setError(nextError.message) }
+  }
 
-    const handleEdit = (seller) => {
-        setEditingSeller(seller)
-        setFormData({
-            name: seller.name || '',
-            phone: seller.phone || '',
-            email: seller.email || '',
-            address: seller.address || '',
-        })
-        setShowModal(true)
-    }
+  const markPaid = async (settlement) => {
+    const reference = window.prompt('Enter the bank/UPI payout reference. This is mandatory.')
+    if (!reference?.trim()) return
+    try { await adminApi.recordSettlementPayment({ settlementId: settlement.id, payoutReference: reference.trim() }); await load() }
+    catch (nextError) { setError(nextError.message) }
+  }
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this seller?')) {
-            try {
-                await deleteDoc(doc(db, 'sellers', id))
-                fetchSellers()
-            } catch (err) {
-                console.error('Error deleting seller:', err)
-            }
-        }
-    }
-
-    const openAdd = () => {
-        setEditingSeller(null)
-        setFormData({ name: '', phone: '', email: '', address: '' })
-        setShowModal(true)
-    }
-
-    return (
-        <div>
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">Sellers / Artisans ({sellers.length})</h2>
-                <button onClick={openAdd} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                    <Plus size={18} /> Add Seller
-                </button>
-            </div>
-
-            {loading ? (
-                <div className="text-center py-10 text-gray-400">Loading sellers...</div>
-            ) : sellers.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                    <Users size={40} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-lg">No sellers yet</p>
-                    <p className="text-sm mt-1">Add sellers to select them when creating products</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {sellers.map((seller) => (
-                        <div key={seller.id} className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                                    {seller.name ? seller.name.charAt(0).toUpperCase() : 'S'}
-                                </div>
-                                <div className="flex gap-1">
-                                    <button onClick={() => handleEdit(seller)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                        <Edit2 size={14} />
-                                    </button>
-                                    <button onClick={() => handleDelete(seller.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                            <h3 className="font-bold text-gray-800">{seller.name}</h3>
-                            {seller.phone && <p className="text-sm text-gray-500 mt-1">📞 {seller.phone}</p>}
-                            {seller.email && <p className="text-sm text-gray-500">✉️ {seller.email}</p>}
-                            {seller.address && <p className="text-sm text-gray-400 mt-1">📍 {seller.address}</p>}
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Add/Edit Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-                        <div className="flex items-center justify-between p-6 border-b">
-                            <h3 className="text-xl font-bold text-gray-800">
-                                {editingSeller ? 'Edit Seller' : 'Add New Seller'}
-                            </h3>
-                            <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                                <input name="name" value={formData.name} onChange={handleInputChange} required className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Artisan name" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
-                                <input name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="+91 98765 43210" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                                <input name="email" type="email" value={formData.email} onChange={handleInputChange} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="seller@example.com" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
-                                <input name="address" value={formData.address} onChange={handleInputChange} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Khurja, UP" />
-                            </div>
-                            <div className="flex gap-3 pt-4 border-t">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-                                    Cancel
-                                </button>
-                                <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50">
-                                    {saving ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save size={18} />
-                                            {editingSeller ? 'Update Seller' : 'Add Seller'}
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6"><div><h2 className="text-xl font-bold text-gray-800">Sellers and amounts due</h2><p className="text-sm text-gray-500">Order-item earnings, reversals and payout settlements</p></div><button onClick={() => { setForm(emptySeller); setShowModal(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg"><Plus size={18} /> Add Seller</button></div>
+      {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">{error}</div>}
+      {loading ? <div className="text-center py-10 text-gray-400">Loading seller accounts…</div> : sellers.length === 0 ? <div className="text-center py-10 text-gray-400"><Users className="mx-auto mb-2" />No sellers yet</div> : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {sellers.map((seller) => <div key={seller.id} className="bg-white border rounded-xl p-5"><div className="flex justify-between"><div><h3 className="font-bold">{seller.name}</h3><p className="text-sm text-gray-500">{seller.email || seller.phone || 'No notification contact'}</p></div><button onClick={() => { setForm({ ...emptySeller, ...seller }); setShowModal(true) }} className="text-blue-600"><Edit2 size={16} /></button></div><div className="grid grid-cols-3 gap-2 my-4 text-sm"><div className="bg-amber-50 p-2 rounded"><p className="text-gray-500 text-xs">Due</p><p className="font-semibold">{formatMoney(totals[seller.id]?.payable)}</p></div><div className="bg-gray-50 p-2 rounded"><p className="text-gray-500 text-xs">Pending</p><p className="font-semibold">{formatMoney(totals[seller.id]?.pending)}</p></div><div className="bg-green-50 p-2 rounded"><p className="text-gray-500 text-xs">Paid</p><p className="font-semibold">{formatMoney(totals[seller.id]?.paid)}</p></div></div><button disabled={!totals[seller.id]?.payable} onClick={() => createSettlement(seller)} className="w-full border border-blue-200 text-blue-700 rounded-lg py-2 disabled:opacity-40">Create settlement</button></div>)}
         </div>
-    )
+      )}
+
+      <h3 className="font-bold text-gray-800 mt-8 mb-3">Settlements</h3>
+      <div className="bg-white border rounded-xl overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 text-left"><tr><th className="p-3">Seller</th><th className="p-3">Entries</th><th className="p-3">Net amount</th><th className="p-3">Status</th><th className="p-3">Reference</th><th className="p-3"></th></tr></thead><tbody className="divide-y">{settlements.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">No settlements yet</td></tr> : settlements.map((settlement) => <tr key={settlement.id}><td className="p-3">{settlement.sellerName}</td><td className="p-3">{settlement.entryIds?.length || 0}</td><td className="p-3 font-semibold">{formatMoney(settlement.netPayablePaise)}</td><td className="p-3 capitalize">{settlement.status}</td><td className="p-3">{settlement.payoutReference || '—'}</td><td className="p-3 text-right">{settlement.status === 'approved' && <button onClick={() => markPaid(settlement)} className="bg-green-600 text-white rounded px-3 py-1.5">Mark paid</button>}</td></tr>)}</tbody></table></div>
+
+      {showModal && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white rounded-2xl max-w-lg w-full"><div className="p-5 border-b flex justify-between"><h3 className="font-bold text-lg">{form.id ? 'Edit seller' : 'Add seller'}</h3><button onClick={() => setShowModal(false)}><X /></button></div><form onSubmit={save} className="p-5 space-y-3"><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Seller name *" className="w-full border rounded-lg px-3 py-2" /><div className="grid grid-cols-2 gap-3"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="border rounded-lg px-3 py-2" /><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="border rounded-lg px-3 py-2" /></div><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address" className="w-full border rounded-lg px-3 py-2" /><div className="grid grid-cols-2 gap-3"><input value={form.payoutMethod} onChange={(e) => setForm({ ...form, payoutMethod: e.target.value })} placeholder="Payout method" className="border rounded-lg px-3 py-2" /><input value={form.payoutDetails} onChange={(e) => setForm({ ...form, payoutDetails: e.target.value })} placeholder="Payout details" className="border rounded-lg px-3 py-2" /></div><fieldset><legend className="text-sm font-medium mb-2">Notification channels</legend><div className="flex gap-4">{['email', 'sms', 'whatsapp'].map((channel) => <label key={channel} className="capitalize text-sm"><input type="checkbox" checked={form.notificationChannels.includes(channel)} onChange={(e) => setForm({ ...form, notificationChannels: e.target.checked ? [...form.notificationChannels, channel] : form.notificationChannels.filter((item) => item !== channel) })} className="mr-1" />{channel}</label>)}</div></fieldset><div className="flex justify-end gap-3 pt-3"><button type="button" onClick={() => setShowModal(false)} className="border rounded-lg px-4 py-2">Cancel</button><button disabled={saving} className="bg-blue-600 text-white rounded-lg px-4 py-2 flex items-center gap-2"><Save size={16} />Save</button></div></form></div></div>}
+    </div>
+  )
 }
 
 export default SellersTab

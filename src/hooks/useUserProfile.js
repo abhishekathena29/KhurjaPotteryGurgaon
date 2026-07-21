@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
 /**
@@ -22,7 +22,7 @@ export const getUserProfile = async (uid) => {
 export const saveUserAddress = async (uid, address) => {
   if (!uid) return
   try {
-    await setDoc(doc(db, 'users', uid), { address }, { merge: true })
+    await setDoc(doc(db, 'users', uid), { address, updatedAt: serverTimestamp() }, { merge: true })
   } catch (err) {
     console.error('Error saving address:', err)
   }

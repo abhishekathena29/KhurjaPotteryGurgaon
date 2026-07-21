@@ -1,27 +1,35 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Package, Tag, Users, ShoppingBag } from 'lucide-react'
+import { LogOut, Package, Tag, Users, ShoppingBag, ClipboardList, Settings, Bell, CreditCard } from 'lucide-react'
 import CategoriesTab from '../../components/admin/CategoriesTab'
 import ProductsTab from '../../components/admin/ProductsTab'
 import SellersTab from '../../components/admin/SellersTab'
 import OrdersTab from '../../components/admin/OrdersTab'
+import RequestsTab from '../../components/admin/RequestsTab'
+import SettingsTab from '../../components/admin/SettingsTab'
+import NotificationsTab from '../../components/admin/NotificationsTab'
+import PaymentsTab from '../../components/admin/PaymentsTab'
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('orders')
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/admin/login')
   }
 
   const tabs = [
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'categories', label: 'Categories', icon: Tag },
     { id: 'sellers', label: 'Sellers', icon: Users },
+    { id: 'requests', label: 'Requests', icon: ClipboardList },
+    { id: 'notifications', label: 'Updates', icon: Bell },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
   return (
@@ -43,10 +51,16 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {user?.isLocalTestAdmin && (
+        <div className="bg-amber-100 border-b border-amber-300 text-amber-900 text-sm px-4 py-2 text-center">
+          Local UI test session — Firebase reads and mutations still require a deployed backend and real administrator claim.
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1">
+        <div className="max-w-7xl mx-auto px-4 overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -67,9 +81,13 @@ const Dashboard = () => {
       {/* Tab Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'orders' && <OrdersTab />}
+        {activeTab === 'payments' && <PaymentsTab />}
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'sellers' && <SellersTab />}
+        {activeTab === 'requests' && <RequestsTab />}
+        {activeTab === 'notifications' && <NotificationsTab />}
+        {activeTab === 'settings' && <SettingsTab />}
       </div>
     </div>
   )

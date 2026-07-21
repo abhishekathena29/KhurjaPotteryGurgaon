@@ -1,0 +1,38 @@
+{
+  "name": "potters-central-functions",
+  "private": true,
+  "main": "lib/server.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node lib/server.js",
+    "server": "npm run build && node --env-file=.env lib/server.js",
+    "test": "npm run build && node --test lib/domain.test.js",
+    "test:server": "npm run build && node --test lib/server.test.js",
+    "seed:config": "npm run build && node --env-file=.env lib/scripts/seed-config.js",
+    "grant:admin": "npm run build && node --env-file=.env lib/scripts/grant-admin.js",
+    "migrate": "npm run build && node --env-file=.env lib/scripts/migrate-products.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.2.5",
+    "multer": "^2.2.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^22.15.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
+    "typescript": "^5.8.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

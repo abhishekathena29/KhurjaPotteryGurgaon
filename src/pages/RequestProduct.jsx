@@ -1,9 +1,16 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Send } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
+import { useAuth } from '../context/AuthContext'
+import { commerceApi } from '../services/commerceApi'
 
 const RequestProduct = () => {
   const { categories } = useCategories()
+  const { isAuthenticated } = useAuth()
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [confirmation, setConfirmation] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     contactNumber: '',
@@ -15,21 +22,19 @@ const RequestProduct = () => {
     additionalDetails: '',
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Product request submitted:', formData)
-    alert('Thank you for your request! We will contact you soon to discuss your custom product.')
-    setFormData({
-      name: '',
-      contactNumber: '',
-      productCategory: '',
-      preferredColor: '',
-      productSize: '',
-      expectedByDate: '',
-      referenceProductLink: '',
-      additionalDetails: '',
-    })
+    setSubmitting(true)
+    setError('')
+    try {
+      const result = await commerceApi.submitProductRequest({ ...formData, attachmentUrls: [] })
+      setConfirmation(`Request #${result.requestId.slice(0, 8).toUpperCase()} was submitted. We will contact you shortly.`)
+      setFormData({ name: '', contactNumber: '', productCategory: '', preferredColor: '', productSize: '', expectedByDate: '', referenceProductLink: '', additionalDetails: '' })
+    } catch (nextError) {
+      setError(nextError.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleChange = (e) => {
@@ -38,6 +43,8 @@ const RequestProduct = () => {
       [e.target.name]: e.target.value,
     })
   }
+
+  if (!isAuthenticated) return <Navigate to="/login?redirect=/request-product" replace />
 
   return (
     <div className="min-h-screen bg-cream py-12">
@@ -93,6 +100,8 @@ const RequestProduct = () => {
           <h2 className="text-2xl font-bold mb-6 text-brown-dark">
             Product Request Form
           </h2>
+          {error && <div className="mb-5 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3">{error}</div>}
+          {confirmation && <div className="mb-5 bg-green-50 border border-green-200 text-green-700 rounded-lg p-3">{confirmation}</div>}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label
@@ -252,10 +261,11 @@ const RequestProduct = () => {
 
             <button
               type="submit"
-              className="btn-primary w-full flex items-center justify-center gap-2"
+              disabled={submitting}
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Send size={20} />
-              Submit Request
+              {submitting ? 'Submitting…' : 'Submit Request'}
             </button>
           </form>
         </section>
@@ -265,4 +275,3 @@ const RequestProduct = () => {
 }
 
 export default RequestProduct
-

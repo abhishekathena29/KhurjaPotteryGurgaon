@@ -8,6 +8,7 @@ import {
   updateProfile,
 } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { adminApi } from '../services/commerceApi'
 
 const AuthContext = createContext()
 
@@ -21,11 +22,28 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdTokenResult()
+          if (token.claims.admin === true) {
+            setIsAdmin(true)
+          } else {
+            const access = await adminApi.verifyAccess()
+            setIsAdmin(access.isAdmin === true)
+          }
+        } catch (error) {
+          console.error('Could not read user permissions:', error)
+          setIsAdmin(false)
+        }
+      } else {
+        setIsAdmin(false)
+      }
       setLoading(false)
     })
 
@@ -33,9 +51,11 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const login = async (email, password) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password)
+    const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
     return cred.user
   }
+
+  const loginAdmin = (email, password) => login(email, password)
 
   const signup = async (name, email, password) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
@@ -62,14 +82,34 @@ export const AuthProvider = ({ children }) => {
     await signOut(auth)
   }
 
+  const refreshPermissions = async () => {
+    if (!auth.currentUser) return false
+    const token = await auth.currentUser.getIdTokenResult(true)
+    let nextIsAdmin = token.claims.admin === true
+    if (!nextIsAdmin) {
+      try {
+        const access = await adminApi.verifyAccess()
+        nextIsAdmin = access.isAdmin === true
+      } catch {
+        nextIsAdmin = false
+      }
+    }
+    setIsAdmin(nextIsAdmin)
+    return nextIsAdmin
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
+        isAdmin,
+        authLoading: loading,
         login,
+        loginAdmin,
         signup,
         logout,
+        refreshPermissions,
       }}
     >
       {!loading && children}

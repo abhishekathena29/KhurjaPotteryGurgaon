@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { ChevronRight, MapPin, Wallet, CheckCircle, ShoppingBag, Loader2 } from 'lucide-react'
+import { ChevronRight, MapPin, Wallet, CheckCircle, ShoppingBag, Loader2, Upload, QrCode } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
-import { createOrder } from '../hooks/useOrders'
 import { getUserProfile, saveUserAddress } from '../hooks/useUserProfile'
-
-const DELIVERY_FEE = 50
+import { useCommerceConfig } from '../hooks/useCommerceConfig'
+import { commerceApi } from '../services/commerceApi'
+import { uploadPaymentProof } from '../services/paymentUploads'
+import { createIdempotencyKey, formatMoney } from '../lib/commerce'
 
 const Checkout = () => {
-  const { cart, getCartTotal, clearCart } = useCart()
+  const { cart, clearCart } = useCart()
   const { user, isAuthenticated } = useAuth()
+  const { config, loading: configLoading, error: configError } = useCommerceConfig()
   const navigate = useNavigate()
 
   const [address, setAddress] = useState({
@@ -22,11 +24,14 @@ const Checkout = () => {
     state: '',
     pincode: '',
   })
-  const [paymentMethod, setPaymentMethod] = useState('cod')
+  const paymentMethod = 'online'
+  const [idempotencyKey] = useState(createIdempotencyKey)
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState('')
   const [placedOrder, setPlacedOrder] = useState(null)
   const [hasSavedAddress, setHasSavedAddress] = useState(false)
+  const [paymentProofFile, setPaymentProofFile] = useState(null)
+  const [uploadedProof, setUploadedProof] = useState(null)
 
   // Pre-fill the form with the user's previously saved address
   useEffect(() => {
@@ -48,13 +53,17 @@ const Checkout = () => {
     }
   }, [user?.uid])
 
+  const subtotalPaise = cart.reduce((sum, item) =>
+    sum + Number(item.salePricePaise ?? Math.round(item.price * 100)) * item.quantity, 0)
+  const onlineAvailable = Boolean(config?.prepaidEnabled && config?.manualPaymentQrUrl)
+
   // Require login before checking out — send them to login and back here
   if (!isAuthenticated) {
     return <Navigate to="/login?redirect=/checkout" replace />
   }
 
-  const subtotal = getCartTotal()
-  const total = subtotal + DELIVERY_FEE
+  const deliveryFeePaise = Number(config?.deliveryFeePaise || 0)
+  const totalPaise = subtotalPaise + deliveryFeePaise
 
   const handleChange = (e) => {
     setAddress((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -85,30 +94,28 @@ const Checkout = () => {
 
     setPlacing(true)
     try {
-      const orderId = await createOrder({
-        userId: user.uid,
-        userEmail: user.email,
+      if (!onlineAvailable) throw new Error('Online QR payment is not currently available.')
+      if (!paymentProofFile) throw new Error('Upload the successful-payment screenshot before submitting your order.')
+      const proof = uploadedProof || await uploadPaymentProof(paymentProofFile)
+      if (!uploadedProof) setUploadedProof(proof)
+      const order = await commerceApi.createCheckout({
+        idempotencyKey,
         items: cart.map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
+          productId: item.productId,
+          variantId: item.variantId,
           quantity: item.quantity,
-          sku: item.sku || '',
         })),
-        subtotal,
-        deliveryFee: DELIVERY_FEE,
-        total,
         address: trimmedAddress,
         paymentMethod,
-        status: 'pending',
+        paymentProofId: proof.id,
       })
-      // Remember the address so checkout is faster next time
       await saveUserAddress(user.uid, trimmedAddress)
       clearCart()
-      setPlacedOrder({ id: orderId, total })
+      setPlacedOrder(order)
     } catch (err) {
       console.error('Error placing order:', err)
-      setError('Something went wrong while placing your order. Please try again.')
+      if (err.code === 'OUT_OF_STOCK') setError('One or more items are no longer available in the requested quantity. Please review your cart.')
+      else setError(err.message || 'Something went wrong while placing your order. Please try again.')
     } finally {
       setPlacing(false)
     }
@@ -124,16 +131,16 @@ const Checkout = () => {
               <CheckCircle size={36} className="text-green-600" strokeWidth={1.5} />
             </div>
             <h1 className="text-2xl md:text-3xl font-display font-medium text-brown-dark tracking-tight mb-3">
-              Order Confirmed!
+              Payment Submitted
             </h1>
             <p className="text-brown-light font-light mb-2">
-              Thank you for your order. We&apos;ll contact you shortly to confirm delivery.
+              Your order is awaiting manual payment verification. It will be confirmed after the website owner approves your screenshot.
             </p>
             <p className="text-sm text-brown-light mb-1">
-              Order ID: <span className="font-medium text-brown-dark">#{placedOrder.id.substring(0, 8).toUpperCase()}</span>
+              Order: <span className="font-medium text-brown-dark">#{placedOrder.orderNumber}</span>
             </p>
             <p className="text-sm text-brown-light mb-8">
-              Amount payable on delivery: <span className="font-medium text-brown-dark">₹{placedOrder.total}</span>
+              Amount submitted: <span className="font-medium text-brown-dark">{formatMoney(placedOrder.grandTotalPaise)}</span>
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button onClick={() => navigate('/profile')} className="btn-primary">
@@ -170,6 +177,9 @@ const Checkout = () => {
       </div>
     )
   }
+
+  if (configLoading) return <div className="min-h-screen bg-cream flex items-center justify-center text-brown-light">Loading checkout configuration…</div>
+  if (configError || !config) return <div className="min-h-screen bg-cream flex items-center justify-center text-red-700">Checkout is temporarily unavailable because commerce configuration is missing.</div>
 
   return (
     <div className="min-h-screen bg-cream py-8">
@@ -314,20 +324,42 @@ const Checkout = () => {
                 </h2>
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer p-4 rounded-lg border border-terracotta/50 bg-sand/30">
-                <input
-                  type="radio"
-                  name="payment"
-                  value="cod"
-                  checked={paymentMethod === 'cod'}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-4 h-4 text-terracotta accent-terracotta"
-                />
-                <div>
-                  <p className="text-brown-dark font-medium text-sm">Cash on Delivery</p>
-                  <p className="text-brown-light font-light text-xs mt-0.5">Pay with cash when your order arrives</p>
+              {onlineAvailable
+                ? <div className="flex items-center gap-3 p-4 rounded-lg border border-terracotta bg-sand/30"><CheckCircle size={18} className="text-terracotta" /><div><p className="text-brown-dark font-medium text-sm">Online QR Payment</p><p className="text-brown-light text-xs mt-0.5">Pay using the owner&apos;s QR and submit proof for manual verification</p></div></div>
+                : <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">Online payment is temporarily unavailable. Please contact support.</p>}
+
+              {onlineAvailable && (
+                <div className="mt-6 border-t border-sand pt-6">
+                  <div className="flex items-center gap-2 mb-3"><QrCode size={18} className="text-brown-dark" /><h3 className="font-medium text-brown-dark">Pay {formatMoney(totalPaise)}</h3></div>
+                  <div className="grid sm:grid-cols-[220px_1fr] gap-5 items-start">
+                    <div className="border border-sand rounded-xl bg-white p-3 flex items-center justify-center">
+                      <img src={config.manualPaymentQrUrl} alt="QR code for online payment" className="max-h-52 max-w-full object-contain" />
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      {config.manualPaymentPayeeName && <p className="text-brown-dark">Payee: <strong>{config.manualPaymentPayeeName}</strong></p>}
+                      <p className="text-brown-light">{config.manualPaymentInstructions || 'Pay the exact total shown above, then upload the successful-payment screenshot.'}</p>
+                      <label className="block">
+                        <span className="font-medium text-brown-dark">Payment screenshot *</span>
+                        <span className="mt-2 flex cursor-pointer items-center gap-2 border border-dashed border-terracotta rounded-lg p-3 text-brown-dark hover:bg-sand/30">
+                          <Upload size={18} />
+                          <span className="truncate">{paymentProofFile?.name || 'Choose payment screenshot'}</span>
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          required
+                          onChange={(event) => {
+                            setPaymentProofFile(event.target.files?.[0] || null)
+                            setUploadedProof(null)
+                          }}
+                          className="sr-only"
+                        />
+                      </label>
+                      <p className="text-xs text-brown-light">Your order is not confirmed until the website owner verifies this screenshot.</p>
+                    </div>
+                  </div>
                 </div>
-              </label>
+              )}
             </div>
           </div>
 
@@ -345,7 +377,7 @@ const Checkout = () => {
                       {item.name} <span className="text-brown-light">× {item.quantity}</span>
                     </span>
                     <span className="font-medium text-brown-dark whitespace-nowrap">
-                      ₹{item.price * item.quantity}
+                      {formatMoney(Number(item.salePricePaise ?? Math.round(item.price * 100)) * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -354,37 +386,37 @@ const Checkout = () => {
               <div className="space-y-3 border-t border-sand pt-4 mb-6">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-brown-light font-light">Subtotal</span>
-                  <span className="font-medium text-brown-dark">₹{subtotal}</span>
+                  <span className="font-medium text-brown-dark">{formatMoney(subtotalPaise)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-brown-light font-light">Delivery</span>
-                  <span className="font-medium text-brown-dark">₹{DELIVERY_FEE}</span>
+                  <span className="font-medium text-brown-dark">{formatMoney(deliveryFeePaise)}</span>
                 </div>
                 <div className="border-t border-sand pt-4">
                   <div className="flex justify-between items-baseline">
                     <span className="text-lg font-medium text-brown-dark tracking-tight">Total</span>
-                    <span className="text-2xl font-medium text-brown-dark">₹{total}</span>
+                    <span className="text-2xl font-medium text-brown-dark">{formatMoney(totalPaise)}</span>
                   </div>
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={placing}
+                disabled={placing || !onlineAvailable || !paymentProofFile}
                 className="w-full bg-brown-dark hover:bg-brown text-white py-3.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {placing ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    Placing Order...
+                    Uploading & Submitting…
                   </>
                 ) : (
-                  'Confirm Order'
+                  'Submit Payment for Verification'
                 )}
               </button>
 
               <p className="text-[11px] text-brown-light text-center mt-4 font-light">
-                By confirming, you agree to pay ₹{total} on delivery.
+                Your {formatMoney(totalPaise)} payment proof will be submitted for manual verification.
               </p>
             </div>
           </div>

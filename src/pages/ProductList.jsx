@@ -1,13 +1,16 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ShoppingCart, Heart, Plus, Filter, X, ChevronRight, Check } from 'lucide-react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { ShoppingCart, Heart, Filter, X, ChevronRight, Check } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 import { useProducts } from '../hooks/useProducts'
 import { useCategories } from '../hooks/useCategories'
+import { formatMoney, productMatchesSearch } from '../lib/commerce'
 
 const ProductList = () => {
   const { category } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const searchQuery = searchParams.get('search') || ''
   const { addToCart } = useCart()
   const { addToWishlist, isInWishlist } = useWishlist()
   const { products: allProducts, loading: productsLoading } = useProducts()
@@ -15,11 +18,17 @@ const ProductList = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState('')
   const [addedId, setAddedId] = useState(null)
+  const [cartError, setCartError] = useState('')
 
   const handleAddToCart = (product) => {
-    addToCart(product)
-    setAddedId(product.id)
-    setTimeout(() => setAddedId((curr) => (curr === product.id ? null : curr)), 3000)
+    try {
+      addToCart(product)
+      setCartError('')
+      setAddedId(product.id)
+      setTimeout(() => setAddedId((curr) => (curr === product.id ? null : curr)), 3000)
+    } catch (error) {
+      setCartError(error.message)
+    }
   }
   const [filters, setFilters] = useState({
     categories: [],
@@ -46,19 +55,25 @@ const ProductList = () => {
 
   // Derive unique colors and sizes from actual products
   const uniqueColors = useMemo(() => {
-    return [...new Set(allProducts.map(p => p.color).filter(Boolean))]
+    return [...new Set(allProducts.flatMap((product) =>
+      product.variants.map((variant) => variant.color?.name || variant.color).filter(Boolean)
+    ))].sort()
   }, [allProducts])
 
   const uniqueSizes = useMemo(() => {
-    return [...new Set(allProducts.map(p => p.size).filter(Boolean))]
+    return [...new Set(allProducts.flatMap((product) =>
+      product.variants.map((variant) => variant.size).filter(Boolean)
+    ))].sort()
   }, [allProducts])
 
   let products = useMemo(() => {
     let filtered = [...allProducts]
 
+    filtered = filtered.filter((product) => productMatchesSearch(product, searchQuery))
+
     // Apply "Best Sellers" filter
     if (category === 'Best Sellers') {
-      filtered = filtered.filter((p) => p.discount > 0).slice(0, 12)
+      filtered = filtered.filter((p) => p.isBestSeller)
     }
 
     // Apply category filters
@@ -68,12 +83,14 @@ const ProductList = () => {
 
     // Apply size filters
     if (filters.sizes.length > 0) {
-      filtered = filtered.filter((p) => filters.sizes.includes(p.size))
+      filtered = filtered.filter((p) => p.variants.some((variant) => filters.sizes.includes(variant.size)))
     }
 
     // Apply color filters
     if (filters.colors.length > 0) {
-      filtered = filtered.filter((p) => filters.colors.includes(p.color))
+      filtered = filtered.filter((p) => p.variants.some((variant) =>
+        filters.colors.includes(variant.color?.name || variant.color)
+      ))
     }
 
     // Apply price filters
@@ -90,13 +107,13 @@ const ProductList = () => {
     } else if (sortBy === 'price-low') {
       filtered.sort((a, b) => a.price - b.price)
     } else if (sortBy === 'date-latest') {
-      filtered.sort((a, b) => parseInt(b.id) - parseInt(a.id))
+      filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
     } else if (sortBy === 'discount') {
       filtered.sort((a, b) => (b.discount || 0) - (a.discount || 0))
     }
 
     return filtered
-  }, [allProducts, category, filters, sortBy])
+  }, [allProducts, category, filters, sortBy, searchQuery])
 
   const handleCategoryFilter = (cat) => {
     setFilters((prev) => ({
@@ -139,6 +156,12 @@ const ProductList = () => {
     setSortBy('')
   }
 
+  const clearSearch = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('search')
+    setSearchParams(next)
+  }
+
   const hasActiveFilters =
     filters.categories.length > 0 ||
     filters.sizes.length > 0 ||
@@ -179,6 +202,15 @@ const ProductList = () => {
           <ChevronRight size={14} />
           <span className="text-brown-dark font-medium">Products</span>
         </div>
+
+        {searchQuery && (
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-display text-brown-dark">Search results for “{searchQuery}”</h1>
+            <button onClick={clearSearch} className="text-sm text-terracotta hover:underline">Clear search</button>
+          </div>
+        )}
+
+        {cartError && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{cartError}</div>}
 
         {/* Active Filter Chips */}
         {activeFilterChips.length > 0 && (
@@ -364,9 +396,9 @@ const ProductList = () => {
                 {products.map((product) => (
                   <div key={product.id} className="group flex flex-col">
                     <Link to={`/product/${product.id}`} className="block relative overflow-hidden rounded-xl bg-sand mb-4 aspect-[4/5] border border-transparent hover:border-sand transition-colors">
-                      {product.images && product.images[0] ? (
+                      {product.images && product.images[0]?.url ? (
                         <img
-                          src={product.images[0]}
+                          src={product.images[0].url}
                           alt={product.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                         />
@@ -379,6 +411,9 @@ const ProductList = () => {
                         <span className="absolute top-3 left-3 bg-terracotta text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded shadow-sm">
                           {product.discount}% OFF
                         </span>
+                      )}
+                      {product.availableQuantity <= 0 && (
+                        <span className="absolute top-3 right-3 bg-gray-900 text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded">Out of stock</span>
                       )}
                     </Link>
                     <div className="flex flex-col flex-1 px-1">
@@ -393,20 +428,21 @@ const ProductList = () => {
                         </p>
                       )}
                       <div className="flex items-center gap-3 mb-5 mt-auto pt-2">
-                        <span className="font-medium text-brown-dark">₹{product.price}</span>
+                        <span className="font-medium text-brown-dark">{formatMoney(product.salePricePaise)}</span>
                         {product.discount > 0 && (
                           <span className="text-sm text-brown-light line-through">
-                            ₹{Math.round(product.price / (1 - product.discount / 100))}
+                            {formatMoney(product.mrpPaise)}
                           </span>
                         )}
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleAddToCart(product)}
-                          className="flex-1 bg-brown-dark hover:bg-brown text-white text-sm py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                          disabled={product.availableQuantity <= 0}
+                          className="flex-1 bg-brown-dark hover:bg-brown text-white text-sm py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
                           <ShoppingCart size={16} />
-                          <span className="hidden sm:inline">Add to Cart</span>
+                          <span className="hidden sm:inline">{product.availableQuantity > 0 ? 'Add to Cart' : 'Out of stock'}</span>
                         </button>
                         <button
                           onClick={() => addToWishlist(product)}
