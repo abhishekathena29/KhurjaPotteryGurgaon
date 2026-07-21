@@ -1,6 +1,8 @@
 # Standalone backend deployment
 
-The commerce API now runs as a normal Node/Express backend. Firebase remains the existing Authentication, Firestore, and Storage provider, but no Firebase Cloud Functions deployment is required.
+The commerce API runs as a normal Node/Express backend. Firebase remains the
+Authentication and Firestore provider; file storage can be Cloudinary, local
+disk, or Firebase Storage. No Firebase Cloud Functions deployment is required.
 
 ## Required access
 
@@ -64,6 +66,13 @@ Production runtime requirements:
 - a persistent writable volume for both `BACKEND_UPLOAD_DIR` and `BACKEND_PRIVATE_UPLOAD_DIR` when `BACKEND_STORAGE_DRIVER=local`;
 - a long random `BACKEND_CRON_SECRET` and `BACKEND_ENFORCE_APP_CHECK=true` after the production App Check site is registered.
 
+For a disk-free Render deployment, set `BACKEND_STORAGE_DRIVER=cloudinary` and
+configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
+`CLOUDINARY_API_SECRET`, and `CLOUDINARY_FOLDER`. The API credentials are
+server-only. Public product/QR assets are delivered by Cloudinary, while payment
+proofs are stored as authenticated assets and streamed only through the
+authorized backend endpoint. See [RENDER_CLOUDINARY_DEPLOYMENT.md](./RENDER_CLOUDINARY_DEPLOYMENT.md).
+
 Local upload URLs are intentionally not portable. After the production backend and persistent volume are online, upload the production QR again from Admin → Settings so Firestore contains the HTTPS backend URL. Existing product files stored on local disk must likewise be copied to the mounted production volume or uploaded again.
 
 Set this frontend environment variable and redeploy the Vite site:
@@ -91,14 +100,20 @@ Schedule the jobs with the `x-cron-secret` header:
 
 ## Manual QR payment workflow
 
-Configure `BACKEND_PRIVATE_UPLOAD_DIR` on persistent storage; it must not be inside the public `BACKEND_UPLOAD_DIR`. Payment screenshots are never exposed by `/uploads` and are served only after Firebase ID-token and ownership/admin verification.
+With the local driver, configure `BACKEND_PRIVATE_UPLOAD_DIR` on persistent
+storage; it must not be inside the public `BACKEND_UPLOAD_DIR`. With the
+Cloudinary driver, payment proofs are authenticated Cloudinary assets. In both
+cases screenshots are served only after Firebase ID-token and ownership/admin
+verification.
 
 In Admin → Settings, upload the owner QR, add the payee name/instructions, choose the verification window, and enable online QR payments. A customer must upload a valid image proof before checkout can create an online order. The order reserves stock with payment status `verification_pending`. Admin → Payments provides the protected proof preview:
 
 - **Verify & confirm** atomically marks payment paid, commits inventory, and confirms the order.
 - **Reject & cancel** requires a customer-facing reason, releases reserved inventory, records the rejection, and queues the cancellation notification.
 
-The QR is intentionally public storefront content; payment proofs are private. Both files require persistent disk (or the Firebase storage driver) in production.
+The QR is intentionally public storefront content; payment proofs are private.
+Use persistent disk for the local driver, Firebase Storage for the Firebase
+driver, or authenticated Cloudinary assets for the Cloudinary driver.
 
 ## Existing catalogue migration
 

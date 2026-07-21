@@ -13,6 +13,7 @@ test("backend health endpoint is available", async () => {
   const response = await request(app).get("/api/health").expect(200);
   assert.equal(response.body.ok, true);
   assert.equal(response.body.service, "potters-central-backend");
+  assert.equal(response.body.storageReady, true);
 });
 
 test("unknown callable operations fail closed", async () => {

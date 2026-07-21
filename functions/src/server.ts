@@ -1,5 +1,4 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import cors from "cors";
 import express, { NextFunction, Request, RequestHandler, Response } from "express";
@@ -8,6 +7,15 @@ import { getAppCheck } from "firebase-admin/app-check";
 import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import {
+  deleteLocalPrivateImage,
+  deleteStoredImage,
+  downloadCloudinaryImage,
+  readLocalPrivateImage,
+  storeLocalPrivateImage,
+  storeLocalPublicImage,
+  uploadCloudinaryImage,
+} from "./storage";
 import {
   adjustInventory,
   archiveProduct,
@@ -43,8 +51,12 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
 const storageDriver = process.env.BACKEND_STORAGE_DRIVER ?? "local";
+const storageReady = storageDriver !== "cloudinary" || [
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
+].every((name) => Boolean(process.env[name]?.trim()));
 const uploadRoot = path.resolve(process.env.BACKEND_UPLOAD_DIR ?? path.join(process.cwd(), "uploads"));
-const privateUploadRoot = path.resolve(process.env.BACKEND_PRIVATE_UPLOAD_DIR ?? path.join(process.cwd(), "private-uploads"));
 const publicBackendUrl = (process.env.BACKEND_PUBLIC_URL ?? "http://127.0.0.1:3001").replace(/\/$/, "");
 if (storageDriver === "local") {
   app.use("/uploads", express.static(uploadRoot, { immutable: true, maxAge: "1y" }));
@@ -99,10 +111,12 @@ const callableHandlers: Record<string, RequestHandler> = {
 } as unknown as Record<string, RequestHandler>;
 
 app.get("/api/health", (_request, response) => {
-  response.json({
-    ok: true,
+  response.status(storageReady ? 200 : 503).json({
+    ok: storageReady,
     service: "potters-central-backend",
     projectId: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || null,
+    storageDriver,
+    storageReady,
   });
 });
 
@@ -190,16 +204,13 @@ app.post("/api/product-images/:productId", upload.single("image"), async (reques
       return;
     }
     const imageId = randomUUID();
-    const storagePath = `products/${productId}/${imageId}/original.${detected.extension}`;
-    const downloadToken = randomUUID();
+    let storagePath = `products/${productId}/${imageId}/original.${detected.extension}`;
     let url: string;
     if (storageDriver === "local") {
-      const relativePath = path.join("products", productId, imageId, `original.${detected.extension}`);
-      const target = path.join(uploadRoot, relativePath);
-      await mkdir(path.dirname(target), { recursive: true });
-      await writeFile(target, request.file.buffer, { flag: "wx", mode: 0o600 });
-      url = `${publicBackendUrl}/uploads/${relativePath.split(path.sep).map(encodeURIComponent).join("/")}`;
+      await storeLocalPublicImage(storagePath, request.file.buffer);
+      url = `${publicBackendUrl}/uploads/${storagePath.split("/").map(encodeURIComponent).join("/")}`;
     } else if (storageDriver === "firebase") {
+      const downloadToken = randomUUID();
       const bucket = getStorage().bucket();
       await bucket.file(storagePath).save(request.file.buffer, {
         resumable: false,
@@ -215,6 +226,16 @@ app.post("/api/product-images/:productId", upload.single("image"), async (reques
         },
       });
       url = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
+    } else if (storageDriver === "cloudinary") {
+      const uploaded = await uploadCloudinaryImage({
+        buffer: request.file.buffer,
+        relativePublicId: `products/${productId}/${imageId}`,
+        image: detected,
+        deliveryType: "upload",
+        tags: ["product-image"],
+      });
+      storagePath = uploaded.storagePath;
+      url = uploaded.url;
     } else {
       throw new Error(`Unsupported BACKEND_STORAGE_DRIVER: ${storageDriver}`);
     }
@@ -237,14 +258,11 @@ app.post("/api/payment-qr", upload.single("image"), async (request, response, ne
       return;
     }
     const imageId = randomUUID();
-    const storagePath = `payment/qr/${imageId}.${detected.extension}`;
+    let storagePath = `payment/qr/${imageId}.${detected.extension}`;
     let url: string;
     if (storageDriver === "local") {
-      const relativePath = path.join("payment", "qr", `${imageId}.${detected.extension}`);
-      const target = path.join(uploadRoot, relativePath);
-      await mkdir(path.dirname(target), { recursive: true });
-      await writeFile(target, request.file.buffer, { flag: "wx", mode: 0o600 });
-      url = `${publicBackendUrl}/uploads/${relativePath.split(path.sep).map(encodeURIComponent).join("/")}`;
+      await storeLocalPublicImage(storagePath, request.file.buffer);
+      url = `${publicBackendUrl}/uploads/${storagePath.split("/").map(encodeURIComponent).join("/")}`;
     } else if (storageDriver === "firebase") {
       const bucket = getStorage().bucket();
       const downloadToken = randomUUID();
@@ -257,12 +275,25 @@ app.post("/api/payment-qr", upload.single("image"), async (request, response, ne
         },
       });
       url = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
+    } else if (storageDriver === "cloudinary") {
+      const uploaded = await uploadCloudinaryImage({
+        buffer: request.file.buffer,
+        relativePublicId: `payment/qr/${imageId}`,
+        image: detected,
+        deliveryType: "upload",
+        tags: ["payment-qr"],
+      });
+      storagePath = uploaded.storagePath;
+      url = uploaded.url;
     } else {
       throw new Error(`Unsupported BACKEND_STORAGE_DRIVER: ${storageDriver}`);
     }
+    const configRef = getFirestore().doc("commerceConfig/default");
+    const previousConfig = await configRef.get();
+    const previousStoragePath = String(previousConfig.data()?.manualPaymentQrStoragePath ?? "");
     const batch = getFirestore().batch();
     const updatedAt = FieldValue.serverTimestamp();
-    batch.set(getFirestore().doc("commerceConfig/default"), {
+    batch.set(configRef, {
       manualPaymentQrUrl: url,
       manualPaymentQrStoragePath: storagePath,
       manualPaymentQrUpdatedAt: updatedAt,
@@ -273,7 +304,17 @@ app.post("/api/payment-qr", upload.single("image"), async (request, response, ne
       manualPaymentQrUrl: url,
       updatedAt,
     }, { merge: true });
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (error) {
+      await deleteStoredImage(storagePath, "payment/qr").catch((cleanupError) =>
+        console.warn("Could not remove payment QR after configuration update failed", { storagePath, cleanupError }));
+      throw error;
+    }
+    if (previousStoragePath && previousStoragePath !== storagePath) {
+      deleteStoredImage(previousStoragePath, "payment/qr").catch((error) =>
+        console.warn("Could not remove superseded payment QR", { previousStoragePath, error }));
+    }
     response.status(201).json({ id: imageId, storagePath, url });
   } catch (error) {
     next(error);
@@ -293,34 +334,50 @@ app.post("/api/payment-proofs", upload.single("image"), async (request, response
       return;
     }
     const proofId = randomUUID();
-    const storagePath = `payment-proofs/${customer.uid}/${proofId}.${detected.extension}`;
+    let storagePath = `payment-proofs/${customer.uid}/${proofId}.${detected.extension}`;
     let localRelativePath = "";
     if (storageDriver === "local") {
       localRelativePath = path.join(customer.uid, `${proofId}.${detected.extension}`);
-      const target = path.join(privateUploadRoot, localRelativePath);
-      await mkdir(path.dirname(target), { recursive: true });
-      await writeFile(target, request.file.buffer, { flag: "wx", mode: 0o600 });
+      await storeLocalPrivateImage(localRelativePath, request.file.buffer);
     } else if (storageDriver === "firebase") {
       await getStorage().bucket().file(storagePath).save(request.file.buffer, {
         resumable: false,
         contentType: detected.contentType,
         metadata: { cacheControl: "private,no-store", metadata: { ownerId: customer.uid, proofId } },
       });
+    } else if (storageDriver === "cloudinary") {
+      const uploaded = await uploadCloudinaryImage({
+        buffer: request.file.buffer,
+        relativePublicId: `payment-proofs/${proofId}`,
+        image: detected,
+        deliveryType: "authenticated",
+        tags: ["payment-proof"],
+      });
+      storagePath = uploaded.storagePath;
     } else {
       throw new Error(`Unsupported BACKEND_STORAGE_DRIVER: ${storageDriver}`);
     }
-    await getFirestore().doc(`paymentProofUploads/${proofId}`).create({
-      ownerId: customer.uid,
-      ownerEmail: customer.email ?? "",
-      status: "uploaded",
-      storageDriver,
-      storagePath,
-      localRelativePath,
-      contentType: detected.contentType,
-      originalName: request.file.originalname.slice(0, 300),
-      sizeBytes: request.file.size,
-      createdAt: FieldValue.serverTimestamp(),
-    });
+    try {
+      await getFirestore().doc(`paymentProofUploads/${proofId}`).create({
+        ownerId: customer.uid,
+        ownerEmail: customer.email ?? "",
+        status: "uploaded",
+        storageDriver,
+        storagePath,
+        localRelativePath,
+        contentType: detected.contentType,
+        originalName: request.file.originalname.slice(0, 300),
+        sizeBytes: request.file.size,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      const cleanup = storageDriver === "local"
+        ? deleteLocalPrivateImage(localRelativePath)
+        : deleteStoredImage(storagePath, "payment-proofs");
+      await cleanup.catch((cleanupError) =>
+        console.warn("Could not remove payment proof after metadata creation failed", { proofId, cleanupError }));
+      throw error;
+    }
     response.status(201).json({ id: proofId, contentType: detected.contentType, originalName: request.file.originalname });
   } catch (error) {
     next(error);
@@ -347,13 +404,11 @@ app.get("/api/payment-proofs/:proofId", async (request, response, next) => {
     }
     let buffer: Buffer;
     if (proof.storageDriver === "local") {
-      const target = path.resolve(privateUploadRoot, String(proof.localRelativePath ?? ""));
-      if (!target.startsWith(`${privateUploadRoot}${path.sep}`)) {
-        throw Object.assign(new Error("Stored payment proof path is invalid"), { status: 500 });
-      }
-      buffer = await readFile(target);
+      buffer = await readLocalPrivateImage(String(proof.localRelativePath ?? ""));
     } else if (proof.storageDriver === "firebase") {
       [buffer] = await getStorage().bucket().file(String(proof.storagePath)).download();
+    } else if (proof.storageDriver === "cloudinary") {
+      buffer = await downloadCloudinaryImage(String(proof.storagePath));
     } else {
       throw Object.assign(new Error("Stored payment proof driver is invalid"), { status: 500 });
     }

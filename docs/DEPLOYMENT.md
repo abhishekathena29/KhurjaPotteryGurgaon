@@ -1,81 +1,50 @@
-# Deployment Guide for Vercel
+# Frontend deployment
 
-## Vercel Configuration
+Deploy the backend first by following
+[RENDER_CLOUDINARY_DEPLOYMENT.md](./RENDER_CLOUDINARY_DEPLOYMENT.md). The frontend
+build needs the final Render HTTPS URL.
 
-The `vercel.json` file is configured to handle React Router's client-side routing. This ensures that all routes (including `/admin/login`) are properly handled.
+## Static host settings
 
-Deploy the standalone backend first. Its public HTTPS URL is required by the frontend, and its persistent upload volume must be mounted before the owner uploads the production payment QR. The backend does not use Firebase Cloud Functions.
+The frontend is a Vite single-page application. On Cloudflare Pages use:
 
-## Deployment Steps
+- production branch: the branch containing the deployment commit;
+- build command: `npm run build`;
+- output directory: `dist`;
+- `NODE_VERSION=20.19.0`.
 
-1. **Push your code to GitHub**
-   ```bash
-   git add .
-   git commit -m "Add vercel.json for routing"
-   git push
-   ```
+Vercel can use the same build settings for non-commercial testing. Its Hobby
+plan terms must be reviewed before using it for a commercial storefront.
 
-2. **Deploy to Vercel**
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Import your GitHub repository
-   - Vercel will auto-detect Vite configuration
-   - Click "Deploy"
+## Environment variables
 
-3. **Environment Variables**
-   - In Vercel Dashboard → Project Settings → Environment Variables
-   - Add all your `.env` variables:
-     - `VITE_FIREBASE_API_KEY`
-     - `VITE_FIREBASE_AUTH_DOMAIN`
-     - `VITE_FIREBASE_PROJECT_ID`
-     - `VITE_FIREBASE_STORAGE_BUCKET`
-     - `VITE_FIREBASE_MESSAGING_SENDER_ID`
-     - `VITE_FIREBASE_APP_ID`
-     - `VITE_BACKEND_API_URL` (the deployed backend origin, e.g. `https://api.example.com/api`)
-     - `VITE_IMAGE_UPLOAD_DRIVER` (set to `cloudinary` to host images free, without a paid Firebase Storage plan)
-     - `VITE_CLOUDINARY_CLOUD_NAME`
-     - `VITE_CLOUDINARY_UPLOAD_PRESET`
+Copy the Firebase web values from the local `.env`, then set:
 
-### Free image hosting (no paid Firebase Storage / Blaze plan)
-
-Firebase **Storage** requires the paid Blaze plan, but Firestore and Auth run on the free
-Spark plan. To upload product images for free, host them on Cloudinary instead:
-
-1. Create a free [Cloudinary](https://cloudinary.com) account and note your **Cloud name**.
-2. Settings → Upload → **Add upload preset** → Signing mode **Unsigned** → save; note the
-   **preset name**. Optionally restrict allowed formats, max file size, and a folder.
-3. In Vercel set `VITE_IMAGE_UPLOAD_DRIVER=cloudinary`, `VITE_CLOUDINARY_CLOUD_NAME`, and
-   `VITE_CLOUDINARY_UPLOAD_PRESET`, then redeploy.
-
-With this driver the browser uploads images straight to Cloudinary and stores the returned
-URL on the product — the backend and Firebase Storage are not involved in image storage.
-See [ARCHITECTURE.md](./ARCHITECTURE.md) §4.1 for details.
-
-4. **Redeploy**
-   - After adding environment variables, trigger a new deployment
-   - Or push a new commit to trigger automatic deployment
-
-## Troubleshooting
-
-### 404 Errors on Routes
-- Ensure `vercel.json` is in the root directory
-- The file should contain the rewrite rule to redirect all routes to `index.html`
-- After deploying, wait a few minutes for changes to propagate
-
-### Environment Variables Not Working
-- Make sure all variables are prefixed with `VITE_`
-- Redeploy after adding environment variables
-- Check Vercel build logs for any errors
-
-### Build Errors
-- Check that all dependencies are in `package.json`
-- Set the Vercel project Node.js version to Node 20.19 or newer, matching `package.json`
-- Check build logs in Vercel dashboard
-
-## File Structure
+```dotenv
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=potterscentral-c5666
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_USE_EMULATORS=false
+VITE_FIREBASE_APPCHECK_SITE_KEY=...
+VITE_BACKEND_API_URL=https://potters-central-backend.onrender.com/api
+VITE_IMAGE_UPLOAD_DRIVER=backend
 ```
-/
-├── vercel.json          # Vercel routing configuration
-├── vite.config.js      # Vite configuration
-├── package.json         # Dependencies
-└── src/                # Source code
-```
+
+All `VITE_*` values are included in the browser build. Never put the Firebase
+service-account JSON, Cloudinary API secret, or backend cron secret here.
+
+After the first deployment:
+
+1. Add the frontend hostname to Firebase Authentication authorized domains.
+2. Register it with the Firebase App Check web provider.
+3. Set Render's `BACKEND_ALLOWED_ORIGINS` to the exact HTTPS frontend origin.
+4. Redeploy both services after changing environment variables.
+
+## Verification
+
+Open `/`, `/products`, `/checkout`, `/admin/login`, and a product-detail route
+directly. Each route must load the SPA rather than return 404. Sign in, upload a
+test image, and verify the browser calls the configured Render `/api` origin.

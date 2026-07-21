@@ -23,7 +23,7 @@ The repository now contains a trusted Firebase commerce backend, security rules,
 
 ## Prerequisites
 
-- A Firebase project on a plan that supports Cloud Functions.
+- A Firebase Spark project with Authentication and Firestore enabled.
 - Node.js 20 for Functions deployment.
 - Firebase CLI authenticated to the intended project.
 - Java only when running Firebase emulators locally.
@@ -173,10 +173,10 @@ All migrated private commercial records have `migrationReviewRequired: true`. Re
 
 ## 8. Deploy in this order
 
-1. Functions and indexes to staging.
+1. Firestore rules and indexes to staging.
 2. Initialize staging configuration and first admin claim.
 3. Run migration dry-run and apply in staging.
-4. Deploy Firestore and Storage rules.
+4. Deploy Firestore rules and indexes.
 5. Deploy the React application.
 6. Run the acceptance checklist below.
 7. Repeat with a fresh backup in production.
@@ -184,10 +184,11 @@ All migrated private commercial records have `migrationReviewRequired: true`. Re
 Typical Firebase deployment command:
 
 ```bash
-firebase deploy --only functions,firestore:rules,firestore:indexes,storage
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-Deploy the Vite application through the existing Vercel process after adding its environment variables.
+Deploy the standalone backend from `render.yaml`, then deploy the Vite application
+after adding its environment variables. No Firebase Cloud Functions are used.
 
 ## 9. Validation commands
 

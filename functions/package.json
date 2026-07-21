@@ -9,13 +9,14 @@
     "build": "tsc",
     "start": "node lib/server.js",
     "server": "npm run build && node --env-file=.env lib/server.js",
-    "test": "npm run build && node --test lib/domain.test.js",
+    "test": "npm run build && node --test lib/domain.test.js lib/storage.test.js",
     "test:server": "npm run build && node --test lib/server.test.js",
     "seed:config": "npm run build && node --env-file=.env lib/scripts/seed-config.js",
     "grant:admin": "npm run build && node --env-file=.env lib/scripts/grant-admin.js",
     "migrate": "npm run build && node --env-file=.env lib/scripts/migrate-products.js"
   },
   "dependencies": {
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "firebase-admin": "^13.10.0",

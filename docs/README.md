@@ -16,6 +16,9 @@ Guides for setting up, running, and deploying Potters Central. Start with the
 
 ## Deployment
 
+- **[RENDER_CLOUDINARY_DEPLOYMENT.md](./RENDER_CLOUDINARY_DEPLOYMENT.md)** — the
+  complete no-disk deployment using Render Free, server-side Cloudinary storage,
+  Cloudflare Pages, and external authenticated schedules.
 - **[BACKEND_DEPLOYMENT.md](./BACKEND_DEPLOYMENT.md)** — deploy the standalone
   Node/Express commerce backend (build/start commands, env, scheduled jobs, migration).
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** — deploy the React frontend on Vercel (routing,

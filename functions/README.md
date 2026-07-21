@@ -15,7 +15,7 @@ functions/
 ├── src/
 │   ├── server.ts        ← Express app; the deployable entry (main = lib/server.js)
 │   ├── index.ts         ← all callable operations, payment webhook, and scheduled jobs
-│   ├── domain.ts        ← pure business logic (money, SKU, stock, COD, transitions)
+│   ├── domain.ts        ← pure business logic (money, SKU, stock, transitions)
 │   ├── schemas.ts       ← zod request schemas
 │   ├── domain.test.ts   ← unit tests for domain.ts
 │   ├── server.test.ts   ← integration tests for the Express surface
@@ -64,14 +64,15 @@ Available `:operation` values are the keys of `callableHandlers` in `server.ts`
 
 Copy `.env.example` to `.env` and fill in:
 
-- **Seed config** (non-secret): `COMMERCE_CURRENCY`, `DELIVERY_FEE_PAISE`, `COD_*`,
+- **Seed config** (non-secret): `COMMERCE_CURRENCY`, `DELIVERY_FEE_PAISE`,
   `PREPAID_ENABLED`, `RESERVATION_TTL_MINUTES`, `SKU_*`, `ORDER_*`, `BEST_SELLER_*`.
 - **Runtime secrets** (server-only, never `VITE_`): `FIREBASE_SERVICE_ACCOUNT_BASE64`
   (or `GOOGLE_APPLICATION_CREDENTIALS` for local), `FIREBASE_STORAGE_BUCKET`,
   `BACKEND_ADMIN_EMAILS`, `BACKEND_ALLOWED_ORIGINS`, `BACKEND_ENFORCE_APP_CHECK`,
-  `BACKEND_CRON_SECRET`, `BACKEND_STORAGE_DRIVER` (`firebase` for production),
+  `BACKEND_CRON_SECRET`, `BACKEND_STORAGE_DRIVER` (`cloudinary` for free Render),
   `BACKEND_UPLOAD_DIR` / `BACKEND_PUBLIC_URL` (local driver only), and the
-  `PAYMENT_*` / `NOTIFICATION_*` adapter credentials.
+  `CLOUDINARY_*`, `PAYMENT_*`, and `NOTIFICATION_*` credentials. Cloudinary API
+  credentials are server-only and are never prefixed with `VITE_`.
 
 Generate the base64 service account without printing the JSON:
 

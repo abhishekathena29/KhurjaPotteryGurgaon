@@ -95,7 +95,7 @@ new token.
 
 ### 4.1 Image upload  ⭐
 
-There are **two upload drivers**, chosen by the frontend env var
+There are **two frontend upload routes**, chosen by the frontend env var
 `VITE_IMAGE_UPLOAD_DRIVER`. Whichever driver is used, the result is the same shape —
 image **metadata** `{ id, url, storagePath, alt, sortOrder }` — that the product editor
 holds until you **Save** the product (§4.2). Nothing is written to the catalogue on
@@ -103,7 +103,20 @@ upload; the URL is only persisted when the product is saved.
 
 **In all cases** the browser first validates type (JPEG/PNG/WebP/GIF) and size (≤10 MB).
 
-#### Driver A — `cloudinary`  (recommended for a free-tier deployment)
+#### Driver A — `backend` (recommended for the free Render deployment)
+
+`VITE_IMAGE_UPLOAD_DRIVER=backend` (or unset). The browser sends the file to the
+authenticated backend. With `BACKEND_STORAGE_DRIVER=cloudinary`, the backend
+validates image magic bytes and size, performs a signed server-side Cloudinary
+upload, and returns `{ id, storagePath, url }`. Product and QR assets are public;
+payment proofs use Cloudinary's authenticated delivery type and can only be read
+through the backend's owner/admin authorization endpoint. Removing a saved
+product image also deletes the referenced Cloudinary asset.
+
+Cloudinary API credentials stay server-side. No unsigned preset and no Firebase
+Storage bucket are required. See `RENDER_CLOUDINARY_DEPLOYMENT.md`.
+
+#### Driver B — `cloudinary` (legacy direct browser upload)
 
 `VITE_IMAGE_UPLOAD_DRIVER=cloudinary`. The browser uploads the file **directly to
 Cloudinary** via an *unsigned upload preset* (`config/cloudinary.js`) and stores the
@@ -125,7 +138,7 @@ ever needed.) Since the admin UI is admin-only and product **saves** are still
 backend-authorized, catalogue integrity does not depend on the upload endpoint;
 restrict the unsigned preset to limit stray uploads to your Cloudinary account.
 
-#### Driver B — `backend`  (default; needs backend + possibly a paid plan)
+#### Backend storage alternatives
 
 `VITE_IMAGE_UPLOAD_DRIVER=backend` (or unset). The browser `POST`s each file to the
 backend `/api/product-images/:productId` with the admin's ID + App Check tokens. The
@@ -137,10 +150,11 @@ depends on the backend's `BACKEND_STORAGE_DRIVER`:
 - `local` → disk under `BACKEND_UPLOAD_DIR`, served at `BACKEND_PUBLIC_URL/uploads/...`.
   Free, but **ephemeral** on most container hosts (lost on redeploy) unless a persistent
   volume is attached.
+- `cloudinary` → durable Cloudinary assets. Public catalogue/QR images use normal
+  delivery; private payment proofs use authenticated delivery and signed backend reads.
 
-> **Bottom line:** to run entirely on Firebase's free (Spark) plan, use the `cloudinary`
-> driver for images. Firestore and Auth work on Spark; only Firebase Storage forces
-> Blaze, and Cloudinary replaces it.
+> **Bottom line:** for Render Free plus Firebase Spark, use
+> `VITE_IMAGE_UPLOAD_DRIVER=backend` and `BACKEND_STORAGE_DRIVER=cloudinary`.
 
 Storage security (only relevant to the `backend`+`firebase` driver): `storage.rules`
 allows public read of `products/**` but restricts writes to admins with a valid image

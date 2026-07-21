@@ -8,7 +8,6 @@ import {
   DocumentReference,
 } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
-import { getStorage } from "firebase-admin/storage";
 import { defineSecret } from "firebase-functions/params";
 import { onCall, onRequest, HttpsError, CallableRequest } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
@@ -36,6 +35,7 @@ import {
   productRequestSchema,
   productSchema,
 } from "./schemas";
+import { deleteStoredImage } from "./storage";
 
 const adminOptions = (): AppOptions => {
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
@@ -657,7 +657,7 @@ export const saveProduct = onCall(callableOptions, async (request) => {
   });
   await Promise.all(result.orphanedStoragePaths.map(async (path: string) => {
     try {
-      await getStorage().bucket().file(path).delete({ ignoreNotFound: true });
+      await deleteStoredImage(path, "products");
     } catch (error) {
       logger.warn("Could not remove unreferenced product image", { path, error });
     }

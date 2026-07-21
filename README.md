@@ -131,17 +131,18 @@ Full step-by-step (including App Check, admin grant, migration) is in
 | `VITE_FIREBASE_APPCHECK_SITE_KEY` | reCAPTCHA v3 site key for App Check |
 | `VITE_FIREBASE_USE_EMULATORS` | `true` to use local emulators in dev |
 | `VITE_BACKEND_API_URL` | `/api` when co-hosted, or the full `https://backend/api` origin |
-| `VITE_IMAGE_UPLOAD_DRIVER` | `backend` (default) or `cloudinary` (free image hosting — no paid Firebase Storage) |
-| `VITE_CLOUDINARY_CLOUD_NAME` / `VITE_CLOUDINARY_UPLOAD_PRESET` | Cloudinary cloud + **unsigned** preset; required when the driver is `cloudinary` |
+| `VITE_IMAGE_UPLOAD_DRIVER` | `backend` (recommended); `cloudinary` remains only for legacy direct unsigned uploads |
+| `VITE_CLOUDINARY_CLOUD_NAME` / `VITE_CLOUDINARY_UPLOAD_PRESET` | Legacy browser-upload configuration; not used by the Render + Cloudinary backend setup |
 | `BACKEND_DEV_PROXY_TARGET` | dev-only; where Vite proxies `/api` (not shipped to the browser) |
 
 ### Backend (`functions/.env`, **server-only secrets — never prefix with `VITE_`**)
 
-Seed values (`COMMERCE_CURRENCY`, `COD_*`, `SKU_*`, `ORDER_*`, `BEST_SELLER_*`, …) plus
+Seed values (`COMMERCE_CURRENCY`, `SKU_*`, `ORDER_*`, `BEST_SELLER_*`, …) plus
 runtime secrets: `FIREBASE_SERVICE_ACCOUNT_BASE64`, `FIREBASE_STORAGE_BUCKET`,
 `BACKEND_ADMIN_EMAILS`, `BACKEND_ALLOWED_ORIGINS`, `BACKEND_ENFORCE_APP_CHECK`,
-`BACKEND_CRON_SECRET`, `BACKEND_STORAGE_DRIVER`, and the payment/notification adapter
-credentials. See [`functions/.env.example`](./functions/.env.example) for the full list.
+`BACKEND_CRON_SECRET`, `BACKEND_STORAGE_DRIVER`, `CLOUDINARY_*`, and the
+payment/notification adapter credentials. See
+[`functions/.env.example`](./functions/.env.example) for the full list.
 
 > ⚠️ **Secrets:** `.env`, `.env.local`, `functions/.env`, and any service-account JSON
 > hold real credentials. They are git-ignored — keep them that way. In production, set
@@ -198,11 +199,11 @@ the full acceptance checklist.
 
 Three independent deploys against one Firebase project:
 
-1. **Firebase rules & indexes** — `firebase deploy --only firestore:rules,firestore:indexes,storage`
-2. **Backend** — deploy `functions/` as a Node 20 web service (Docker image provided).
+1. **Firebase rules & indexes** — `firebase deploy --only firestore:rules,firestore:indexes`
+2. **Backend** — deploy the root `render.yaml` Blueprint (Docker image provided).
    Build `npm ci && npm run build`, start `npm start`, health `/api/health`.
-   See [`docs/BACKEND_DEPLOYMENT.md`](./docs/BACKEND_DEPLOYMENT.md).
-3. **Frontend** — import the repo into Vercel, add the `VITE_*` env vars, set
+   See [`docs/RENDER_CLOUDINARY_DEPLOYMENT.md`](./docs/RENDER_CLOUDINARY_DEPLOYMENT.md).
+3. **Frontend** — import the repo into a static host, add the `VITE_*` env vars, set
    `VITE_BACKEND_API_URL` to the deployed backend origin, deploy.
    See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
@@ -221,6 +222,7 @@ orders, seller payouts, best sellers, requests — is documented end-to-end in
 | [`docs/ADMIN_SETUP.md`](./docs/ADMIN_SETUP.md) | Admin authorization model |
 | [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) | Frontend deploy on Vercel |
 | [`docs/BACKEND_DEPLOYMENT.md`](./docs/BACKEND_DEPLOYMENT.md) | Standalone backend deploy |
+| [`docs/RENDER_CLOUDINARY_DEPLOYMENT.md`](./docs/RENDER_CLOUDINARY_DEPLOYMENT.md) | Free Render + secure Cloudinary deployment |
 | [`docs/IMPLEMENTATION_GUIDE.md`](./docs/IMPLEMENTATION_GUIDE.md) | Full commerce setup + acceptance checklist |
 | [`docs/BACKEND_ENHANCEMENT_PLAN.md`](./docs/BACKEND_ENHANCEMENT_PLAN.md) | Design rationale / data model reference |
 | [`functions/README.md`](./functions/README.md) | Backend API reference |
