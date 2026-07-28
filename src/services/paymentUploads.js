@@ -1,24 +1,33 @@
-import { backendAuthHeaders, backendUrl, parseBackendResponse } from './backendClient'
+import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { auth, db } from '../config/firebase'
+import { uploadImageToCloudinary } from '../config/cloudinary'
+import { validateImageFile } from './productImages'
 
-const uploadImage = async (path, file) => {
-  const body = new FormData()
-  body.append('image', file)
-  const response = await fetch(backendUrl(path), {
-    method: 'POST',
-    headers: await backendAuthHeaders(),
-    body,
-  })
-  return parseBackendResponse(response)
+// The QR image itself has no Firestore record of its own — the caller is expected to
+// persist the returned url onto commerceConfig.manualPaymentQrUrl (adminApi.updateCommerceConfig).
+export const uploadPaymentQr = async (file) => {
+  validateImageFile(file)
+  const { url } = await uploadImageToCloudinary(file)
+  return { url }
 }
 
-export const uploadPaymentQr = (file) => uploadImage('payment-qr', file)
-
-export const uploadPaymentProof = (file) => uploadImage('payment-proofs', file)
-
-export const fetchPaymentProofObjectUrl = async (proofId) => {
-  const response = await fetch(backendUrl(`payment-proofs/${encodeURIComponent(proofId)}`), {
-    headers: await backendAuthHeaders(),
+// Records a paymentProofUploads doc so createCheckout can validate ownership/status,
+// exactly as the previous backend endpoint did before handing the order off.
+export const uploadPaymentProof = async (file) => {
+  validateImageFile(file)
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('You must be signed in to upload a payment screenshot.')
+  const { url } = await uploadImageToCloudinary(file)
+  const ref = doc(collection(db, 'paymentProofUploads'))
+  await setDoc(ref, {
+    ownerId: uid,
+    ownerEmail: auth.currentUser.email || '',
+    status: 'uploaded',
+    url,
+    contentType: file.type,
+    originalName: file.name.slice(0, 300),
+    sizeBytes: file.size,
+    createdAt: serverTimestamp(),
   })
-  if (!response.ok) await parseBackendResponse(response)
-  return URL.createObjectURL(await response.blob())
+  return { id: ref.id, url }
 }

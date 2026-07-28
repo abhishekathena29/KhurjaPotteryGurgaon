@@ -13,10 +13,7 @@
     "test": "node --test tests/commerce.test.js",
     "test:e2e": "playwright test",
     "test:rules": "npx firebase-tools emulators:exec --only firestore --project demo-potters-central \"node --test tests/rules/*.test.js\"",
-    "validate": "npm run lint && npm run test && npm run build && npm --prefix functions test",
-    "functions:build": "npm --prefix functions run build",
-    "backend:start": "npm --prefix functions run server",
-    "backend:test": "npm --prefix functions run test:server",
+    "validate": "npm run lint && npm run test && npm run build",
     "emulators": "firebase emulators:start",
     "preview": "vite preview"
   },

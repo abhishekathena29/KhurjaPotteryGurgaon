@@ -1,9 +1,0 @@
-node_modules
-lib
-.env
-.env.*
-!.env.example
-uploads
-private-uploads
-*.log
-.DS_Store

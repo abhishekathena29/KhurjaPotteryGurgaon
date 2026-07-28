@@ -96,3 +96,141 @@ export const createIdempotencyKey = () => {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
   throw new Error('This browser does not support secure checkout identifiers')
 }
+
+export const normalizeSku = (value) =>
+  String(value).trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, '-').replace(/-+/g, '-')
+
+export const formatSku = (prefix, padding, number) => {
+  const normalizedPrefix = normalizeSku(prefix)
+  if (!normalizedPrefix) throw new Error('SKU prefix is required')
+  if (!Number.isInteger(padding) || padding < 1 || padding > 12) {
+    throw new Error('SKU padding must be an integer from 1 to 12')
+  }
+  if (!Number.isSafeInteger(number) || number < 1) throw new Error('SKU number is invalid')
+  return `${normalizedPrefix}-${String(number).padStart(padding, '0')}`
+}
+
+export const buildSearchTokens = (values) => {
+  const words = normalizeSearch(values.filter(Boolean).join(' ')).split(' ').filter(Boolean)
+  const tokens = new Set()
+  for (const word of words) {
+    tokens.add(word)
+    for (let i = 2; i <= Math.min(word.length, 12); i += 1) tokens.add(word.slice(0, i))
+  }
+  return [...tokens].slice(0, 500)
+}
+
+export const deriveStockStatus = (availableQuantity, lowStockThreshold) => {
+  if (availableQuantity <= 0) return 'out_of_stock'
+  if (availableQuantity <= lowStockThreshold) return 'low_stock'
+  return 'in_stock'
+}
+
+const validInventory = (onHandQuantity, reservedQuantity) => {
+  if (!Number.isSafeInteger(onHandQuantity) || !Number.isSafeInteger(reservedQuantity) ||
+      onHandQuantity < 0 || reservedQuantity < 0 || reservedQuantity > onHandQuantity) {
+    throw new Error('Inventory balance is inconsistent')
+  }
+}
+
+export const reserveInventory = (onHandQuantity, reservedQuantity, quantity) => {
+  validInventory(onHandQuantity, reservedQuantity)
+  if (!Number.isSafeInteger(quantity) || quantity < 1) throw new Error('Reservation quantity must be positive integer')
+  const nextReserved = reservedQuantity + quantity
+  if (nextReserved > onHandQuantity) throw new Error('OUT_OF_STOCK')
+  return { onHandQuantity, reservedQuantity: nextReserved, availableQuantity: onHandQuantity - nextReserved }
+}
+
+export const commitInventory = (onHandQuantity, reservedQuantity, quantity) => {
+  validInventory(onHandQuantity, reservedQuantity)
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > reservedQuantity) {
+    throw new Error('Reservation cannot be committed')
+  }
+  const nextOnHand = onHandQuantity - quantity
+  const nextReserved = reservedQuantity - quantity
+  return { onHandQuantity: nextOnHand, reservedQuantity: nextReserved, availableQuantity: nextOnHand - nextReserved }
+}
+
+export const releaseInventory = (onHandQuantity, reservedQuantity, quantity) => {
+  validInventory(onHandQuantity, reservedQuantity)
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > reservedQuantity) {
+    throw new Error('Reservation cannot be released')
+  }
+  const nextReserved = reservedQuantity - quantity
+  return { onHandQuantity, reservedQuantity: nextReserved, availableQuantity: onHandQuantity - nextReserved }
+}
+
+export const restoreCommittedInventory = (onHandQuantity, reservedQuantity, quantity) => {
+  validInventory(onHandQuantity, reservedQuantity)
+  if (!Number.isSafeInteger(quantity) || quantity < 1) throw new Error('Restore quantity must be positive integer')
+  const nextOnHand = onHandQuantity + quantity
+  return { onHandQuantity: nextOnHand, reservedQuantity, availableQuantity: nextOnHand - reservedQuantity }
+}
+
+export const allowedFulfilmentTransition = (from, to) => {
+  const transitions = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['packed', 'cancelled'],
+    packed: ['shipped', 'cancelled'],
+    shipped: ['delivered'],
+    delivered: [],
+    cancelled: [],
+  }
+  return Boolean(transitions[from]?.includes(to))
+}
+
+export const calculateSellerPayout = (type, value, salePricePaise) => {
+  if (type === 'fixed') return Math.max(0, Math.round(value))
+  if (value < 0 || value > 100) throw new Error('Seller payout percentage must be between 0 and 100')
+  return Math.round((salePricePaise * value) / 100)
+}
+
+export const validateConfig = (value) => {
+  const integer = (key, min, max) => {
+    const candidate = value[key]
+    if (!Number.isSafeInteger(candidate) || candidate < min || candidate > max) {
+      throw new Error(`${key} must be an integer between ${min} and ${max}`)
+    }
+    return candidate
+  }
+  const boolean = (key) => {
+    if (typeof value[key] !== 'boolean') throw new Error(`${key} must be boolean`)
+    return value[key]
+  }
+  const skuPrefix = normalizeSku(String(value.skuPrefix ?? ''))
+  const orderPrefix = normalizeSku(String(value.orderPrefix ?? ''))
+  if (!skuPrefix) throw new Error('skuPrefix is required')
+  if (!orderPrefix) throw new Error('orderPrefix is required')
+  if (value.currency !== 'INR') throw new Error('currency must be INR')
+  const manualPaymentQrUrl = String(value.manualPaymentQrUrl ?? '').trim()
+  if (manualPaymentQrUrl) {
+    try {
+      const parsed = new URL(manualPaymentQrUrl)
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Unsupported protocol')
+    } catch {
+      throw new Error('manualPaymentQrUrl must be a valid HTTP(S) URL')
+    }
+  }
+  const manualPaymentPayeeName = String(value.manualPaymentPayeeName ?? '').trim()
+  const manualPaymentInstructions = String(value.manualPaymentInstructions ?? '').trim()
+  if (manualPaymentPayeeName.length > 160) throw new Error('manualPaymentPayeeName is too long')
+  if (manualPaymentInstructions.length > 1000) throw new Error('manualPaymentInstructions is too long')
+  return {
+    currency: 'INR',
+    deliveryFeePaise: integer('deliveryFeePaise', 0, 10_000_000),
+    prepaidEnabled: boolean('prepaidEnabled'),
+    reservationTtlMinutes: integer('reservationTtlMinutes', 1, 1_440),
+    manualPaymentVerificationTtlMinutes: value.manualPaymentVerificationTtlMinutes === undefined
+      ? integer('reservationTtlMinutes', 1, 1_440)
+      : integer('manualPaymentVerificationTtlMinutes', 1, 10_080),
+    manualPaymentQrUrl,
+    manualPaymentPayeeName,
+    manualPaymentInstructions,
+    skuPrefix,
+    skuPadding: integer('skuPadding', 1, 12),
+    orderPrefix,
+    orderPadding: integer('orderPadding', 1, 12),
+    bestSellerWindowDays: integer('bestSellerWindowDays', 1, 365),
+    bestSellerLimit: integer('bestSellerLimit', 1, 100),
+  }
+}

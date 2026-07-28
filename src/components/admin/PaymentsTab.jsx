@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
 import { CheckCircle, CreditCard, ExternalLink, RefreshCw, Search, X, XCircle } from 'lucide-react'
+import { db } from '../../config/firebase'
 import { adminApi } from '../../services/commerceApi'
-import { fetchPaymentProofObjectUrl } from '../../services/paymentUploads'
 import { formatMoney } from '../../lib/commerce'
 
 const paymentStatus = (order) => order.payment?.status || order.paymentStatus || 'pending'
@@ -19,18 +20,16 @@ const PaymentProof = ({ proofId, orderNumber }) => {
 
   useEffect(() => {
     let active = true
-    let objectUrl = ''
     if (!proofId) return undefined
-    fetchPaymentProofObjectUrl(proofId).then((nextUrl) => {
-      objectUrl = nextUrl
-      if (active) setUrl(nextUrl)
-      else URL.revokeObjectURL(nextUrl)
+    getDoc(doc(db, 'paymentProofUploads', proofId)).then((snapshot) => {
+      if (!active) return
+      if (!snapshot.exists() || !snapshot.data().url) throw new Error('Payment proof could not be found')
+      setUrl(snapshot.data().url)
     }).catch((nextError) => {
       if (active) setError(nextError.message)
     })
     return () => {
       active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [proofId])
 

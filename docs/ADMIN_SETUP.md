@@ -1,17 +1,25 @@
 # Admin Setup
 
-The admin console uses Firebase Authentication plus either an `admin: true` custom claim or the standalone backend's server-only `BACKEND_ADMIN_EMAILS` allowlist. It no longer accepts shared hardcoded production credentials or treats every signed-in customer as an administrator.
+There is no backend and no custom claim. Admin authorization is a single Firestore
+field: a user is an administrator if their `users/{uid}` document has `isAdmin: true`.
+`firestore.rules`'s `isAdmin()` helper checks exactly that field, and every rule that
+protects catalogue writes, order transitions, inventory, seller ledgers, and commerce
+config calls it. Hiding the admin route in React is not authorization — Firestore rules
+are the real boundary.
 
-Follow [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) to:
+## Granting admin access
 
-1. configure the Firebase project and App Check;
-2. initialize secured commerce configuration;
-3. grant the first named admin account;
-4. configure payment and notification adapters;
-5. migrate legacy products and opening stock;
-6. deploy Functions, rules, indexes, Storage rules, and the web application;
-7. run the complete acceptance checklist.
+1. Have the person sign up normally (Firebase Authentication email/password), which
+   creates their `users/{uid}` profile document.
+2. In the [Firebase Console](https://console.firebase.google.com) → Firestore Database
+   → Data tab, open `users/{uid}` for that account.
+3. Add/edit the field `isAdmin` (boolean) and set it to `true`. Save.
+4. The user must sign out and back in (or the app must re-read the profile doc) to see
+   the admin UI.
 
-Admin access is enforced by the standalone backend for all privileged reads and mutations. Firebase Security Rules still protect any permitted browser reads. Hiding the route in React is not treated as authorization.
+Do not share one operator's login across multiple people — grant each person their own
+account and flip `isAdmin` on their own document.
 
-For the standalone deployment path, follow [BACKEND_DEPLOYMENT.md](./BACKEND_DEPLOYMENT.md).
+Follow [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) for the rest of the initial
+setup: Firebase project + App Check, initial commerce configuration, and the full
+acceptance checklist.

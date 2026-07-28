@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { QrCode, Save, Upload } from 'lucide-react'
+import { QrCode, RefreshCw, Save, TrendingUp, Upload } from 'lucide-react'
 import { adminApi } from '../../services/commerceApi'
 import { invalidateCatalogue } from '../../services/catalogueApi'
 import { uploadPaymentQr } from '../../services/paymentUploads'
@@ -11,6 +11,8 @@ const SettingsTab = () => {
   const [uploadingQr, setUploadingQr] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [releasingReservations, setReleasingReservations] = useState(false)
+  const [recomputingBestSellers, setRecomputingBestSellers] = useState(false)
 
   useEffect(() => {
     adminApi.getSnapshot([], true).then((snapshot) => {
@@ -76,12 +78,38 @@ const SettingsTab = () => {
     }
   }
 
+  const releaseExpiredReservations = async () => {
+    setReleasingReservations(true); setError(''); setMessage('')
+    try {
+      const result = await adminApi.releaseExpiredReservations()
+      setMessage(`Checked ${result.checked} expired reservation${result.checked === 1 ? '' : 's'}, released ${result.released}.${result.failures.length ? ` ${result.failures.length} failed — see console.` : ''}`)
+      if (result.failures.length) console.error('Reservation release failures', result.failures)
+    } catch (nextError) {
+      setError(nextError.message)
+    } finally {
+      setReleasingReservations(false)
+    }
+  }
+
+  const recomputeBestSellers = async () => {
+    setRecomputingBestSellers(true); setError(''); setMessage('')
+    try {
+      const result = await adminApi.recomputeBestSellers()
+      setMessage(`Recomputed best-seller ranking for ${result.productsUpdated} products (last ${result.windowDays} days).`)
+      invalidateCatalogue()
+    } catch (nextError) {
+      setError(nextError.message)
+    } finally {
+      setRecomputingBestSellers(false)
+    }
+  }
+
   if (!form) return <div className="text-gray-500">{error || 'Loading settings…'}</div>
 
   return (
     <div className="max-w-4xl">
       <h2 className="text-xl font-bold mb-1">Commerce settings</h2>
-      <p className="text-sm text-gray-500 mb-5">Business and payment rules are stored in the backend instead of being embedded in page code.</p>
+      <p className="text-sm text-gray-500 mb-5">Business and payment rules are stored directly in Firestore — there is no backend.</p>
       {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg">{error}</div>}
       {message && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg">{message}</div>}
       <form onSubmit={save} className="bg-white border rounded-xl p-6 space-y-6">
@@ -134,6 +162,24 @@ const SettingsTab = () => {
         </section>
         <button disabled={saving || uploadingQr} className="bg-blue-600 text-white rounded-lg px-5 py-2 flex gap-2 items-center disabled:opacity-60"><Save size={17} />{saving ? 'Saving…' : 'Save settings'}</button>
       </form>
+
+      <div className="bg-white border rounded-xl p-6 mt-6">
+        <h3 className="font-semibold mb-1">Maintenance</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          These used to run automatically on a schedule. With no backend to host a timer, run them by hand — releasing
+          expired reservations weekly (or whenever checkout looks stuck) and recomputing best sellers whenever you want the ranking refreshed.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={releaseExpiredReservations} disabled={releasingReservations} className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-2 font-medium disabled:opacity-60">
+            <RefreshCw size={16} className={releasingReservations ? 'animate-spin' : ''} />
+            {releasingReservations ? 'Releasing…' : 'Release expired reservations'}
+          </button>
+          <button type="button" onClick={recomputeBestSellers} disabled={recomputingBestSellers} className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-2 font-medium disabled:opacity-60">
+            <TrendingUp size={16} />
+            {recomputingBestSellers ? 'Recomputing…' : 'Recompute best sellers'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

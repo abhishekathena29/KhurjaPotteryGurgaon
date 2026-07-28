@@ -7,8 +7,7 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { adminApi } from '../services/commerceApi'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 const AuthContext = createContext()
 
@@ -25,25 +24,22 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Admin status is a plain Firestore field (users/{uid}.isAdmin), set by an existing
+  // admin (or you, via the Firebase Console) — there is no backend to mint auth claims.
+  const checkIsAdmin = async (uid) => {
+    try {
+      const snapshot = await getDoc(doc(db, 'users', uid))
+      return snapshot.exists() && snapshot.data().isAdmin === true
+    } catch (error) {
+      console.error('Could not read user permissions:', error)
+      return false
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
-      if (firebaseUser) {
-        try {
-          const token = await firebaseUser.getIdTokenResult()
-          if (token.claims.admin === true) {
-            setIsAdmin(true)
-          } else {
-            const access = await adminApi.verifyAccess()
-            setIsAdmin(access.isAdmin === true)
-          }
-        } catch (error) {
-          console.error('Could not read user permissions:', error)
-          setIsAdmin(false)
-        }
-      } else {
-        setIsAdmin(false)
-      }
+      setIsAdmin(firebaseUser ? await checkIsAdmin(firebaseUser.uid) : false)
       setLoading(false)
     })
 
@@ -84,16 +80,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshPermissions = async () => {
     if (!auth.currentUser) return false
-    const token = await auth.currentUser.getIdTokenResult(true)
-    let nextIsAdmin = token.claims.admin === true
-    if (!nextIsAdmin) {
-      try {
-        const access = await adminApi.verifyAccess()
-        nextIsAdmin = access.isAdmin === true
-      } catch {
-        nextIsAdmin = false
-      }
-    }
+    const nextIsAdmin = await checkIsAdmin(auth.currentUser.uid)
     setIsAdmin(nextIsAdmin)
     return nextIsAdmin
   }

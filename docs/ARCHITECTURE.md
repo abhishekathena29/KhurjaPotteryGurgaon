@@ -7,69 +7,64 @@ an order, paying a seller, and so on.
 
 ---
 
-## 1. The four moving parts
+## 1. The moving parts
 
 ```
-                         ┌─────────────────────────────────────────────┐
-                         │                Firebase project              │
-                         │   Auth   ·   Firestore   ·   Storage         │
-                         └───────▲───────────▲──────────────▲───────────┘
-                                 │           │              │
-        Firebase ID token  +     │           │ Admin SDK    │ (optional image files)
-        App Check token          │           │ (privileged) │
-                                 │           │              │
-   ┌───────────────┐   HTTPS   ┌─┴───────────┴──────────────┴──┐
-   │   Browser     │  /api/... │      Commerce API (backend)   │
-   │  React SPA    │──────────▶│   Express + firebase-admin    │
-   │ (Vercel CDN)  │◀──────────│   Node 20  (functions/)       │
-   └───────────────┘   JSON    └───────────────┬───────────────┘
-                                                │  outbound HTTPS
-                                                ▼
-                                   Payment provider · Notification
-                                   provider (email/SMS/WhatsApp)
+   ┌───────────────┐        Firebase ID token          ┌───────────────────────────┐
+   │   Browser     │ ───────────────────────────────▶  │      Firebase project     │
+   │  React SPA    │        client SDK reads/writes     │   Auth  ·  Firestore      │
+   │ (static host) │ ◀───────────────────────────────  │  (rules-enforced)          │
+   └───────┬───────┘                                    └───────────────────────────┘
+           │
+           │  unsigned browser upload (product photos,
+           │  payment QR, payment-proof screenshots)
+           ▼
+   ┌───────────────┐
+   │   Cloudinary  │
+   └───────────────┘
 ```
 
-1. **Browser (React SPA)** — served as static files from Vercel's CDN. Holds no
-   secrets. Signs users in with Firebase Auth directly, then calls the backend for
-   everything transactional.
-2. **Commerce API (backend)** — a Node/Express service (the `functions/` package).
-   Holds the Firebase **Admin** service-account credential and all provider secrets.
-   Every price, stock change, order transition, and admin action is validated and
-   executed here.
-3. **Firebase** — Auth (identities), Firestore (all data), Storage (image files, if
-   the Firebase storage driver is used).
-4. **External providers** — the payment gateway and the notification channel. Both
-   are reached only from the backend through provider-neutral adapters.
+1. **Browser (React SPA)** — served as static files from a static host (e.g. Vercel).
+   Holds no secrets. Signs users in with Firebase Auth directly and reads/writes
+   Firestore directly through the Firebase Web SDK — there is no backend in between.
+2. **Firebase** — Auth (identities) and Firestore (all data: catalogue, orders,
+   inventory, sellers, config, audit trail). There is no Firebase Storage and no
+   service account; the browser is the only client and it authenticates as the signed-in
+   user.
+3. **Cloudinary** — image storage for product photos, the payment QR, and
+   payment-proof screenshots. The browser uploads directly to Cloudinary via an
+   *unsigned* upload preset (`VITE_CLOUDINARY_CLOUD_NAME` / `VITE_CLOUDINARY_UPLOAD_PRESET`);
+   Cloudinary returns a public `secure_url` that gets stored on the relevant Firestore
+   document.
 
-> **Deployment model:** these are three separate deploys (frontend, backend, Firebase
-> rules) that share one Firebase project id. The frontend and backend can live on the
-> same domain (`/api` proxied to the backend) or on separate domains
-> (`VITE_BACKEND_API_URL=https://api.example.com/api`, with the backend's
-> `BACKEND_ALLOWED_ORIGINS` listing the storefront origin for CORS).
+> **Deployment model:** two independent deploys that share one Firebase project id —
+> the Firestore rules/indexes, and the static frontend build. There is no backend to
+> deploy, no service account to provision, and no scheduled jobs to configure on any
+> host.
 
 ---
 
-## 2. How the browser talks to the backend
+## 2. How the browser talks to Firebase
 
-Everything privileged goes through one of two shapes, both in `src/services/`:
+Everything goes through the Firebase Web SDK directly, wrapped in `src/services/`:
 
-- **Callable operations** — `POST /api/call/:operation` with a JSON body `{ data }`.
-  Implemented by `backendClient.callBackend()` and wrapped in `commerceApi.js`
-  (`commerceApi` for public ops, `adminApi` for admin ops).
-- **Image upload** — `POST /api/product-images/:productId` as `multipart/form-data`
-  (`productImages.uploadProductImage()`), so it can stream the file and report progress.
+- **`catalogueApi.js`** — public catalogue reads (products, categories), cached briefly
+  client-side; `invalidateCatalogue()` clears the cache after an admin edit.
+- **`commerceApi.js`** — `commerceApi` for customer-facing writes (checkout, product
+  requests, own-order reads) and `adminApi` for privileged admin operations (save
+  product, transition order, adjust inventory, settlements, commerce config, bulk jobs,
+  maintenance actions). Every one of these is a normal Firestore SDK call (`setDoc`,
+  `updateDoc`, `runTransaction`, batched writes, …) made as the signed-in user.
+- **`productImages.js`** / **`paymentUploads.js`** — upload a file directly to
+  Cloudinary via the unsigned preset, then persist the returned `url` onto the relevant
+  Firestore document (product image, `commerceConfig.manualPaymentQrUrl`, or an order's
+  payment-proof field).
 
-Every request automatically attaches, when available (`backendClient.backendAuthHeaders`):
-
-- `Authorization: Bearer <Firebase ID token>` — proves who the user is.
-- `x-firebase-appcheck: <App Check token>` — proves the request came from your real app.
-
-The backend verifies both on the server side (`authenticateAdmin` / the callable
-verification in `index.ts`). **Hiding a route in React is never treated as
-authorization** — the backend re-checks the ID token and admin status on every call.
-
-Public catalogue reads are cached for 30 seconds in `catalogueApi.js` so browsing
-doesn't hammer the backend; `invalidateCatalogue()` clears it after an admin edit.
+There is no server to re-check permissions after the fact. **`firestore.rules` is the
+only enforcement point** — every invariant that used to live in trusted backend code
+(price/stock integrity, one-reservation-per-unit, admin-only fields, order state
+transitions, seller ledger writes) is now expressed as a Firestore security rule, and
+the client SDK calls fail outright if a write violates one.
 
 ---
 
@@ -77,110 +72,66 @@ doesn't hammer the backend; `invalidateCatalogue()` clears it after an admin edi
 
 - **Customers** sign up / sign in with Firebase Auth email+password
   (`AuthContext.jsx`). A profile doc is written to `users/{uid}`.
-- **Admins** are identified two ways, checked server-side on every privileged call:
-  1. a Firebase **custom claim** `admin: true` (granted via
-     `functions/npm run grant:admin -- email@x.com`), or
-  2. membership in the backend's `BACKEND_ADMIN_EMAILS` allowlist.
-- On login, `AuthContext` reads the ID token claims; if `admin` isn't present it calls
-  `verifyAdminAccess` on the backend to resolve admin status. `ProtectedRoute.jsx`
-  only *hides* the admin UI — the backend enforces the real boundary.
-
-**In production:** grant each operator their own account. After granting the claim the
-user must sign out and back in (or the app calls `refreshPermissions()`) to pick up the
-new token.
+- **Admins** are identified by a single Firestore field: `users/{uid}.isAdmin == true`.
+  `firestore.rules`'s `isAdmin()` helper reads that field and gates every privileged
+  rule (catalogue writes, order transitions, inventory, commerce config, seller ledger,
+  settlements, category management). There are no custom claims and no server-side
+  allowlist.
+- `AuthContext` loads the user's profile document on sign-in to know whether to show
+  the admin UI. `ProtectedRoute.jsx` only *hides* the admin UI for non-admins — the
+  Firestore rules enforce the real boundary regardless of what the React router shows.
+- See [`ADMIN_SETUP.md`](./ADMIN_SETUP.md) for how to grant admin access (set
+  `isAdmin: true` on a user's document in the Firebase Console).
 
 ---
 
 ## 4. Feature-by-feature: what happens when deployed
 
-### 4.1 Image upload  ⭐
+### 4.1 Image upload
 
-There are **two frontend upload routes**, chosen by the frontend env var
-`VITE_IMAGE_UPLOAD_DRIVER`. Whichever driver is used, the result is the same shape —
-image **metadata** `{ id, url, storagePath, alt, sortOrder }` — that the product editor
-holds until you **Save** the product (§4.2). Nothing is written to the catalogue on
-upload; the URL is only persisted when the product is saved.
+Product photos, the payment QR, and payment-proof screenshots all use the same path:
+the browser uploads the file **directly to Cloudinary** via an *unsigned upload preset*
+(`config/cloudinary.js`), and the returned `secure_url` is stored as plain data —
+on the product's `images[]` array, on `commerceConfig.manualPaymentQrUrl`, or on the
+order's payment-proof field. Nothing is written to Firestore until the surrounding form
+is saved (image upload alone doesn't mutate the catalogue).
 
-**In all cases** the browser first validates type (JPEG/PNG/WebP/GIF) and size (≤10 MB).
-
-#### Driver A — `backend` (recommended for the free Render deployment)
-
-`VITE_IMAGE_UPLOAD_DRIVER=backend` (or unset). The browser sends the file to the
-authenticated backend. With `BACKEND_STORAGE_DRIVER=cloudinary`, the backend
-validates image magic bytes and size, performs a signed server-side Cloudinary
-upload, and returns `{ id, storagePath, url }`. Product and QR assets are public;
-payment proofs use Cloudinary's authenticated delivery type and can only be read
-through the backend's owner/admin authorization endpoint. Removing a saved
-product image also deletes the referenced Cloudinary asset.
-
-Cloudinary API credentials stay server-side. No unsigned preset and no Firebase
-Storage bucket are required. See `RENDER_CLOUDINARY_DEPLOYMENT.md`.
-
-#### Driver B — `cloudinary` (legacy direct browser upload)
-
-`VITE_IMAGE_UPLOAD_DRIVER=cloudinary`. The browser uploads the file **directly to
-Cloudinary** via an *unsigned upload preset* (`config/cloudinary.js`) and stores the
-returned `secure_url` on the product. **No Firebase Storage, no paid Blaze plan, no
-backend involvement for the file itself.** Cloudinary's free tier (25 GB storage + 25 GB
-monthly bandwidth, no credit card) is enough for a small catalogue.
+The browser validates type (JPEG/PNG/WebP/GIF) and size before uploading. There is no
+Firebase Storage bucket and no server-side re-validation of file bytes — the unsigned
+preset should be restricted (allowed formats, max size, target folder) in the Cloudinary
+dashboard to limit stray uploads, and the admin UI being admin-gated is what limits who
+can trigger a product-image upload in the first place. Removing an image from a product
+does **not** delete the underlying Cloudinary asset (fine within the free tier; prune
+manually if ever needed).
 
 Setup once, then it's env-only in production:
 1. Create a free Cloudinary account → note the **Cloud name**.
 2. Settings → Upload → **Add upload preset** → Signing mode **Unsigned** → save → note
    the **preset name**. (Optionally restrict formats, max size, and target folder.)
-3. Set on the frontend host (e.g. Vercel): `VITE_IMAGE_UPLOAD_DRIVER=cloudinary`,
-   `VITE_CLOUDINARY_CLOUD_NAME=...`, `VITE_CLOUDINARY_UPLOAD_PRESET=...`, then redeploy.
-
-`storagePath` is stored empty for Cloudinary images, so the backend never tries to
-delete them from a Firebase bucket. (Trade-off: removing an image from a product does
-not auto-delete the file from Cloudinary — fine within the free quota; prune manually if
-ever needed.) Since the admin UI is admin-only and product **saves** are still
-backend-authorized, catalogue integrity does not depend on the upload endpoint;
-restrict the unsigned preset to limit stray uploads to your Cloudinary account.
-
-#### Backend storage alternatives
-
-`VITE_IMAGE_UPLOAD_DRIVER=backend` (or unset). The browser `POST`s each file to the
-backend `/api/product-images/:productId` with the admin's ID + App Check tokens. The
-backend **re-authenticates the admin**, **re-validates the file by its magic bytes**
-(not just the declared MIME type), stores it, and returns the metadata. Where it stores
-depends on the backend's `BACKEND_STORAGE_DRIVER`:
-- `firebase` → Firebase Storage at `products/{productId}/{imageId}/original.<ext>`.
-  **Requires the paid Blaze plan** (Firebase Storage needs billing enabled).
-- `local` → disk under `BACKEND_UPLOAD_DIR`, served at `BACKEND_PUBLIC_URL/uploads/...`.
-  Free, but **ephemeral** on most container hosts (lost on redeploy) unless a persistent
-  volume is attached.
-- `cloudinary` → durable Cloudinary assets. Public catalogue/QR images use normal
-  delivery; private payment proofs use authenticated delivery and signed backend reads.
-
-> **Bottom line:** for Render Free plus Firebase Spark, use
-> `VITE_IMAGE_UPLOAD_DRIVER=backend` and `BACKEND_STORAGE_DRIVER=cloudinary`.
-
-Storage security (only relevant to the `backend`+`firebase` driver): `storage.rules`
-allows public read of `products/**` but restricts writes to admins with a valid image
-content-type and size.
+3. Set `VITE_CLOUDINARY_CLOUD_NAME=...` and `VITE_CLOUDINARY_UPLOAD_PRESET=...` on the
+   frontend host and redeploy.
 
 ### 4.2 Creating / editing a product
 
-Flow (`ProductsTab.jsx` → `adminApi.saveProduct` → `saveProduct` in `index.ts`):
+Flow (`ProductsTab.jsx` → `adminApi.saveProduct` in `commerceApi.js`):
 
-1. A product **draft id is generated up front** (`createProductId()`) so images can be
-   uploaded and grouped under it before the first save.
+1. A product **draft id is generated up front** so images can be uploaded to Cloudinary
+   and grouped under it before the first save.
 2. Admin fills name, description, category, **MRP + discount %**, one or more
    **variants** (each variant = colour [+ optional size], per-variant SKU and on-hand
    quantity, low-stock threshold), seller payout terms, internal costs, and
    merchandising flags (featured / best-seller mode).
-3. On Save the backend:
-   - verifies admin role + App Check;
-   - validates the whole payload with zod (`schemas.ts`);
+3. On Save, `saveProduct` (running as the signed-in admin, enforced by
+   `firestore.rules`):
    - **derives** `salePrice = mrp − round(mrp × discount%)` in integer paise (no
      floating-point money);
-   - **allocates or claims a unique SKU per variant** atomically via the SKU registry
-     (`skus/{normalizedSku}`) + counter, so duplicates fail with `SKU_ALREADY_EXISTS`;
+   - **allocates or claims a unique SKU per variant** via the SKU registry
+     (`skus/{normalizedSku}`) inside a Firestore transaction, so duplicates fail with
+     `SKU_ALREADY_EXISTS`;
    - computes aggregate availability and stock status;
-   - writes the public product, private commercial terms (seller payout/cost — kept in
-     a separate admin-only collection so they're never exposed to shoppers), and search
-     tokens.
+   - writes the public product and the private commercial terms (seller payout/cost —
+     kept in a separate admin-only collection so they're never exposed to shoppers,
+     protected by rules) and search tokens.
 4. The frontend calls `invalidateCatalogue()` so the change appears immediately.
 
 **Money is always stored as integer paise.** The UI converts to rupees for display.
@@ -188,59 +139,71 @@ Editing a product later never rewrites historical orders — orders snapshot the
 
 ### 4.3 Browsing, search & best sellers
 
-- Storefront reads come from the cached `getCatalogue` backend call, normalized by
-  `lib/commerce.js`. Only **active** products with valid variants/images are public.
+- Storefront reads come from the cached `getCatalogue` call in `catalogueApi.js`,
+  normalized by `lib/commerce.js`. Only **active** products with valid variants/images
+  are public (enforced by `firestore.rules` on what's readable, and by client-side
+  filtering of draft/archived records).
 - Search matches product name, category, SKU, colour, and size (see
   `commerce.test.js`), and composes with category/price filters and URL state.
-- **Best sellers** are *order-derived*: a scheduled job
-  (`recompute-best-sellers`) ranks products by paid, non-cancelled sales over a
-  configurable window, with per-product `auto / force_on / force_off` overrides — it is
-  **not** just "products with a discount."
+- **Best sellers** are *order-derived*: an admin runs **"Recompute best sellers"** from
+  the admin Settings tab's **Maintenance** section (§4.10), which ranks products by
+  paid, delivered sales over a configurable window, with per-product
+  `auto / force_on / force_off` overrides — it is **not** just "products with a
+  discount."
 
 ### 4.4 Cart & checkout (the anti-oversell path)
 
-Flow (`Checkout.jsx` → `commerceApi.createCheckout` → `createCheckout` in `index.ts`):
+Flow (`Checkout.jsx` → `commerceApi.createCheckout` in `commerceApi.js`):
 
 1. The cart stores **variant ids + quantities** only. It never trusts local prices.
-2. At checkout the backend reloads every product/variant, **rejects inactive, missing,
-   or insufficient-stock lines**, and recomputes all prices and totals server-side.
+2. At checkout the client reloads every product/variant, **rejects inactive, missing,
+   or insufficient-stock lines**, and recomputes all prices and totals from the current
+   Firestore data.
 3. In a **Firestore transaction** it reserves stock by increasing `reservedQuantity`
    (available drops immediately), creates the order with an **idempotency key**, and
    writes an expiring reservation — so two shoppers can't buy the last unit
-   (`OUT_OF_STOCK` for the loser).
+   (`OUT_OF_STOCK` for the loser). `firestore.rules` enforces that a checkout write can
+   only move stock the way this transaction shape allows; a crafted client write outside
+   these invariants is rejected.
 4. Checkout is **online QR payment only**. A signed-in customer must upload a valid
-   payment screenshot before an order can be created.
+   payment screenshot (to Cloudinary, §4.1) before an order can be created.
 5. The order remains `verification_pending` with stock reserved until an administrator
-   verifies the proof. Approval atomically marks it paid, commits stock, and confirms
-   fulfilment; rejection cancels it and releases the reservation.
-6. A scheduled `expire-reservations` job releases stock from abandoned/unverified orders
-   exactly once.
+   verifies the proof in Admin → Payments. Approval atomically marks it paid, commits
+   stock, and confirms fulfilment; rejection cancels it and releases the reservation.
+6. Abandoned/unverified reservations are **not** released automatically — an admin runs
+   **"Release expired reservations"** from the Settings tab's Maintenance section
+   (§4.10) to sweep them.
 
 ### 4.5 Orders, fulfilment & cancellation
 
 - Fulfilment status (`pending → confirmed → packed → shipped → delivered`) and payment
   status (`pending / paid / refunded / …`) are **independent**, each with its own
-  filter in the admin Orders tab. Illegal transitions are rejected server-side.
+  filter in the admin Orders tab. Illegal transitions are rejected by `firestore.rules`.
 - **Cancellation** requires a standardized reason code **and** a customer-facing
-  message. The backend, in one transaction, marks the order cancelled, releases/reverses
-  stock, flags refund work if prepaid, reverses seller ledger entries, and appends an
-  audit event. The customer message is queued for notification verbatim.
+  message. `adminApi.cancelOrder` runs the whole thing — mark cancelled, release/reverse
+  stock, flag refund work if prepaid, reverse seller ledger entries, append an audit
+  event — as one Firestore transaction/batch so it can't partially apply. The customer
+  message is stored on the order for the admin to relay manually (there is no automated
+  notification channel — see §4.9).
 - Customers see their own orders (with SKU, selected colour/size, and any cancellation
-  message); Firestore rules stop them from reading anyone else's or editing totals.
+  message); `firestore.rules` stop them from reading anyone else's or editing totals.
 
 ### 4.6 Payments (manual QR verification)
 
-- The owner uploads the public payment QR in Admin → Settings. Screenshots use a private
-  backend directory and require customer/admin authentication to read.
-- Admin → Payments is the only path that can approve or reject submitted proof.
-- Approval and rejection are idempotent, validated backend operations; the browser
-  cannot directly set payment, fulfilment, or inventory states.
+- The owner uploads the public payment QR (to Cloudinary) in Admin → Settings; the URL
+  is stored on `commerceConfig.manualPaymentQrUrl`.
+- The customer uploads a payment-proof screenshot (to Cloudinary) during checkout.
+- Admin → Payments is the only place that can approve or reject submitted proof
+  (`adminApi.verifyManualPayment`); `firestore.rules` restrict the underlying order
+  fields (payment status, fulfilment status) to admin writes only, so the browser
+  cannot directly set them.
+- There is no payment gateway integration — this is purely a manual verify-by-screenshot
+  flow.
 
 ### 4.7 Product requests
 
-The "Request a Product" form persists to Firestore via `submitProductRequest` and
-appears in the admin **Requests** tab with a workflow (new → reviewing → … ). It no
-longer just logs to the console.
+The "Request a Product" form persists to Firestore via `commerceApi.submitProductRequest`
+and appears in the admin **Requests** tab with a workflow (new → reviewing → … ).
 
 ### 4.8 Sellers, ledger & settlements
 
@@ -251,67 +214,62 @@ entries rather than editing history.
 
 ### 4.9 Notifications
 
-A provider-neutral notification worker (`process-notifications` job +
-`deliverNotification` trigger) sends order/cancellation/settlement messages through the
-configured endpoint. Failed or unconfigured notifications remain visible in Firestore
-and are retryable (`retryNotification`).
+There is no email/SMS/WhatsApp delivery — there's no backend to send anything from. The
+admin **Notifications** tab is an in-app activity log of order/payment/settlement events
+(`NotificationsTab.jsx`) for the admin to review and follow up with customers/sellers
+manually (phone, WhatsApp, email — whatever channel they use outside the app). The
+cancellation/status messages an admin writes are stored on the order/request/settlement
+record so they're visible here, not sent automatically.
 
-### 4.10 Bulk admin operations
+### 4.10 Maintenance (replaces the old scheduled jobs)
+
+The old backend ran two scheduled jobs (release expired reservations every ~15 minutes,
+recompute best sellers daily) via cron. With no backend and no scheduler, these are now
+two buttons in the admin **Settings** tab's **Maintenance** section, run on demand by an
+admin:
+
+- **Release expired reservations** — finds orders still `reserved` past their
+  reservation window and cancels/releases them (`adminApi.releaseExpiredReservations`).
+- **Recompute best sellers** — re-ranks products by paid, delivered sales over the
+  configured window and updates each product's best-seller flag
+  (`adminApi.recomputeBestSellers`).
+
+Run these periodically (e.g. whenever you're in the admin dashboard) rather than
+relying on an external scheduler.
+
+### 4.11 Bulk admin operations
 
 Admins can preview then run bulk changes (discount, status, category, best-seller,
-inventory) as resumable **bulk jobs** with per-item error reporting — never a
-client-side loop over unrestricted writes.
+inventory) as resumable **bulk jobs** with per-item error reporting — implemented as
+chunked client-side batched writes, never an unrestricted client-side loop (each write
+still goes through the same `firestore.rules` checks).
 
 ---
 
-## 5. Backend HTTP surface
-
-| Method & path | Purpose | Auth |
-|---------------|---------|------|
-| `GET /api/health` | Liveness/health check | none |
-| `POST /api/call/:operation` | All callable commerce/admin ops | ID token (+admin for admin ops) + App Check |
-| `POST /api/product-images/:productId` | Admin image upload (multipart) | admin ID token + App Check |
-| `POST /api/payment-webhook` | Verified payment events | HMAC signature |
-| `POST /api/jobs/expire-reservations` | Release expired reservations | `x-cron-secret` |
-| `POST /api/jobs/recompute-best-sellers` | Recompute best-seller ranks | `x-cron-secret` |
-| `POST /api/jobs/process-notifications` | Flush pending notifications | `x-cron-secret` |
-
-Schedule the three jobs from your host's scheduler (e.g. cron / Cloud Scheduler)
-sending the `x-cron-secret` header — suggested cadences are in
-[`BACKEND_DEPLOYMENT.md`](./BACKEND_DEPLOYMENT.md).
-
----
-
-## 6. Data model (Firestore) — quick reference
+## 5. Data model (Firestore) — quick reference
 
 `products/{id}` (public) · `products/{id}/variants/{id}` · `productCommercials/{id}`
 (admin-only seller/cost) · `skus/{normalizedSku}` (uniqueness) · `counters/*` ·
 `orders/{id}` (+`/events`) · `inventoryMovements/{id}` · `sellers/{id}` +
 `sellerLedger/{id}` + `settlements/{id}` · `productRequests/{id}` · `bulkJobs/{id}` ·
-`commerceConfig/default` (secured) + its public checkout projection · `notifications/{id}`.
+`commerceConfig/default` (secured) + its public checkout projection · `notifications/{id}`
+(in-app activity log only — see §4.9).
 
-Full field-level definitions and the design rationale are in
-[`BACKEND_ENHANCEMENT_PLAN.md`](./BACKEND_ENHANCEMENT_PLAN.md) §4.
-
----
-
-## 7. Security model in one paragraph
-
-Secrets live only on the backend (service account, provider tokens, cron secret) — the
-frontend only ever holds public `VITE_FIREBASE_*` config. Admin authority is enforced by
-the backend and by Firestore/Storage rules, not by the React router. Money is integer
-paise, computed and stored server-side. Stock, prices, and order totals are never
-trusted from the browser. App Check keeps unauthorized clients out. Every privileged
-mutation is validated (zod), authorized (claim/allowlist), and audited (order/inventory
-events). See IMPLEMENTATION_GUIDE §7 and §11 for the full checklist and monitoring.
+`firestore.rules` is the authoritative, and only, definition of who can read/write each
+of these and under what conditions (SKU uniqueness, stock non-negativity, order state
+transitions, admin-only fields, etc.) — there is no separate design document; read the
+rules file directly for field-level detail.
 
 ---
 
-## 8. Note on the Firebase Functions path
+## 6. Security model in one paragraph
 
-`functions/` deploys as a **standalone Express service** (`main = lib/server.js`,
-`Dockerfile` provided) — this is the supported/primary backend deployment. The same
-handlers in `index.ts` are written with the Firebase Functions v2 signature, so a
-Cloud Functions deployment is *possible*, but the current repo has no `functions` block
-in `firebase.json` and no functions entry module wired for it. Deploy the backend as the
-Node/Express service described in [`BACKEND_DEPLOYMENT.md`](./BACKEND_DEPLOYMENT.md).
+There are no server-side secrets at all — the frontend only ever holds public
+`VITE_FIREBASE_*` config and public `VITE_CLOUDINARY_*` config (an unsigned upload
+preset is not a secret). Admin authority and every business invariant (money as integer
+paise, stock never oversold, prices/totals never client-supplied, order state machine,
+SKU uniqueness) are enforced entirely by `firestore.rules`, since there is no trusted
+backend to enforce them at request time. Every privileged mutation runs as the signed-in
+user and is only as safe as the rule that permits it — review `firestore.rules` whenever
+a new admin capability is added. See [`IMPLEMENTATION_GUIDE.md`](./IMPLEMENTATION_GUIDE.md)
+for the full setup and acceptance checklist.
