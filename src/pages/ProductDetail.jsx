@@ -1,339 +1,180 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ShoppingCart, Heart, Plus, Minus, MapPin } from 'lucide-react'
-// import { doc, getDoc } from 'firebase/firestore'
-// import { db } from '../config/firebase'
-import { mockProducts } from '../data/mockData'
+import { ChevronLeft, ChevronRight, ShoppingCart, Heart, Plus, Minus, Check, ChevronRight as ChevronR } from 'lucide-react'
+import { useProducts } from '../hooks/useProducts'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
+import { formatMoney } from '../lib/commerce'
 
 const ProductDetail = () => {
   const { id } = useParams()
+  const { products, loading } = useProducts()
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
-
-  const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const product = products.find((candidate) => candidate.id === id)
+  const [selectedVariantId, setSelectedVariantId] = useState('')
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [deliveryOption, setDeliveryOption] = useState('pickup')
-  const [pincode, setPincode] = useState('')
-  const [deliveryAvailable, setDeliveryAvailable] = useState(null)
+  const [feedback, setFeedback] = useState(null)
+
+  const activeVariants = useMemo(
+    () => (product?.variants || []).filter((variant) => variant.status !== 'inactive'),
+    [product]
+  )
 
   useEffect(() => {
-    // Using mock data for now
-    const product = mockProducts.find((p) => p.id === id)
-    if (product) {
-      setProduct({
-        ...product,
-        imageUrl: product.images?.[0] || '',
-      })
+    if (!activeVariants.some((variant) => variant.id === selectedVariantId)) {
+      setSelectedVariantId(activeVariants[0]?.id || '')
     }
-    setLoading(false)
+  }, [activeVariants, selectedVariantId])
 
-    // Uncomment below to use Firebase instead
-    // const fetchProduct = async () => {
-    //   try {
-    //     const docRef = doc(db, 'products', id)
-    //     const docSnap = await getDoc(docRef)
-    //     if (docSnap.exists()) {
-    //       const data = docSnap.data()
-    //       setProduct({
-    //         id: docSnap.id,
-    //         ...data,
-    //         name: data.category || 'Product',
-    //         description: `Handcrafted ${data.category || 'product'} by ${data.ownerName || 'local artisan'}`,
-    //         sku: `PROD-${docSnap.id.substring(0, 8).toUpperCase()}`,
-    //         dimensions: 'Dimensions vary',
-    //         images: data.imageUrl ? [data.imageUrl] : ['/api/placeholder/400/400'],
-    //         discount: 0,
-    //       })
-    //     }
-    //   } catch (error) {
-    //     console.error('Error fetching product:', error)
-    //   } finally {
-    //     setLoading(false)
-    //   }
-    // }
-    // if (id) {
-    //   fetchProduct()
-    // }
-  }, [id])
+  const selectedVariant = activeVariants.find((variant) => variant.id === selectedVariantId) || activeVariants[0]
+  const colorOptions = useMemo(() => {
+    const seen = new Set()
+    return activeVariants.filter((variant) => {
+      const key = variant.color?.id || variant.color?.name || variant.color
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [activeVariants])
+  const selectedColorId = selectedVariant?.color?.id || selectedVariant?.color?.name || selectedVariant?.color
+  const sizeOptions = activeVariants.filter((variant) =>
+    (variant.color?.id || variant.color?.name || variant.color) === selectedColorId
+  )
+  const colorImages = product?.images?.filter((image) => !image.colorId || image.colorId === selectedColorId) || []
+  const images = colorImages.length ? colorImages : (product?.images || [])
+  const availableQuantity = Number(selectedVariant?.availableQuantity || 0)
+
+  useEffect(() => {
+    setQuantity((current) => Math.max(1, Math.min(current, availableQuantity || 1)))
+    setSelectedImageIndex(0)
+  }, [selectedVariantId, availableQuantity])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-cream py-12 flex items-center justify-center">
-        <p className="text-xl text-brown-dark/60">Loading product...</p>
-      </div>
-    )
+    return <div className="min-h-screen bg-cream flex items-center justify-center text-brown-light">Loading product…</div>
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-cream py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl font-bold mb-4 text-brown-dark">
-            Product Not Found
-          </h1>
-          <Link to="/products/All products" className="btn-primary">
-            Browse All Products
-          </Link>
-        </div>
+      <div className="min-h-screen bg-cream py-24 text-center">
+        <h1 className="text-2xl font-display text-brown-dark mb-3">Product Not Found</h1>
+        <p className="text-brown-light mb-8">This product is unavailable or has been removed.</p>
+        <Link to="/products/All products" className="btn-primary">Browse Collection</Link>
       </div>
     )
   }
 
-  const handleAddToCart = () => {
-    addToCart(product, quantity)
+  const selectColor = (variant) => {
+    const colorId = variant.color?.id || variant.color?.name || variant.color
+    const availableMatch = activeVariants.find((candidate) =>
+      (candidate.color?.id || candidate.color?.name || candidate.color) === colorId &&
+      Number(candidate.availableQuantity || 0) > 0
+    )
+    setSelectedVariantId((availableMatch || variant).id)
   }
 
-  const handleWishlistToggle = () => {
-    if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id)
-    } else {
-      addToWishlist(product)
+  const add = () => {
+    try {
+      addToCart(product, quantity, selectedVariant)
+      setFeedback({ type: 'success', message: 'Added to cart.' })
+    } catch (error) {
+      setFeedback({ type: 'error', message: error.message })
     }
   }
-
-  const checkDelivery = () => {
-    // Simple check - Gurgaon pincodes start with 122
-    if (pincode.startsWith('122')) {
-      setDeliveryAvailable(true)
-    } else {
-      setDeliveryAvailable(false)
-    }
-  }
-
-  const nextImage = () => {
-    setSelectedImageIndex(
-      (prev) => (prev + 1) % product.images.length
-    )
-  }
-
-  const prevImage = () => {
-    setSelectedImageIndex(
-      (prev) => (prev - 1 + product.images.length) % product.images.length
-    )
-  }
-
-  const deliveryCharges = deliveryOption === 'delivery' && deliveryAvailable ? 50 : 0
 
   return (
-    <div className="min-h-screen bg-cream py-12">
+    <div className="min-h-screen bg-cream py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left: Product Images */}
-          <div>
-            <div className="relative bg-white rounded-lg shadow-lg overflow-hidden mb-4">
-              <div className="aspect-square bg-brown-light relative">
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-brown-light to-brown-dark flex items-center justify-center">
-                    <span className="text-9xl">🏺</span>
-                  </div>
-                )}
-                {/* Navigation Arrows */}
-                {product.images && product.images.length > 1 && (
-                  <>
-                    <button
-                      onClick={prevImage}
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-brown p-2 rounded-full transition-colors"
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft size={24} />
-                    </button>
-                    <button
-                      onClick={nextImage}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-brown p-2 rounded-full transition-colors"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight size={24} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+        <div className="flex items-center gap-2 text-sm text-brown-dark/60 mb-6">
+          <Link to="/">Home</Link><ChevronR size={14} />
+          <Link to="/products/All products">Products</Link><ChevronR size={14} />
+          <span className="text-brown-dark line-clamp-1">{product.name}</span>
+        </div>
 
-            {/* Thumbnail Images */}
-            {product.images.length > 1 && (
-              <div className="flex gap-2">
-                {product.images.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImageIndex(index)}
-                    className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                      index === selectedImageIndex
-                        ? 'border-purple'
-                        : 'border-transparent'
-                    }`}
-                  >
-                    <div className="w-full h-full bg-brown-light"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <div className="relative overflow-hidden rounded-xl border border-sand bg-sand aspect-[4/5] group">
+              {images[selectedImageIndex]?.url ? (
+                <img src={images[selectedImageIndex].url} alt={images[selectedImageIndex].alt || product.name} className="w-full h-full object-cover" />
+              ) : <div className="w-full h-full flex items-center justify-center text-6xl opacity-20">🏺</div>}
+              {product.discountPercent > 0 && <span className="absolute top-4 left-4 bg-terracotta text-white text-xs font-bold px-3 py-1.5 rounded">{product.discountPercent}% OFF</span>}
+              {images.length > 1 && (
+                <>
+                  <button onClick={() => setSelectedImageIndex((selectedImageIndex - 1 + images.length) % images.length)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100" aria-label="Previous image"><ChevronLeft /></button>
+                  <button onClick={() => setSelectedImageIndex((selectedImageIndex + 1) % images.length)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100" aria-label="Next image"><ChevronRight /></button>
+                </>
+              )}
+            </div>
+            {images.length > 1 && (
+              <div className="flex gap-3 mt-4 overflow-x-auto">
+                {images.map((image, index) => (
+                  <button key={image.id} onClick={() => setSelectedImageIndex(index)} className={`w-20 h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 ${index === selectedImageIndex ? 'border-brown-dark' : 'border-transparent'}`}>
+                    <img src={image.url} alt={image.alt || `${product.name} ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Right: Product Details */}
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-brown-dark">
-              {product.name}
-            </h1>
-            <p className="text-brown-dark/60 mb-4">SKU: {product.sku}</p>
+          <div className="bg-white border border-sand rounded-xl p-8 lg:p-10 h-fit sticky top-24">
+            <Link to={`/products/${product.category}`} className="text-xs uppercase tracking-widest text-brown-light">{product.category}</Link>
+            <h1 className="text-3xl lg:text-4xl font-display text-brown-dark mt-3 mb-2">{product.name}</h1>
+            <p className="text-sm text-brown-light mb-6">SKU: {selectedVariant?.sku || '—'}</p>
 
-            <div className="mb-6">
-              {product.discount > 0 && (
-                <div className="mb-2">
-                  <span className="text-sm text-purple font-semibold mr-2">
-                    {product.discount}% OFF
-                  </span>
-                  <span className="text-lg text-brown-dark/60 line-through">
-                    ₹{Math.round(product.price / (1 - product.discount / 100))}
-                  </span>
+            <div className="flex items-center gap-4 pb-7 border-b border-sand">
+              <span className="text-3xl text-brown-dark">{formatMoney(product.salePricePaise)}</span>
+              {product.discountPercent > 0 && <span className="text-lg text-brown-light line-through">{formatMoney(product.mrpPaise)}</span>}
+            </div>
+
+            {product.description && <p className="my-7 text-brown-dark/80 font-light leading-relaxed">{product.description}</p>}
+            {product.dimensions && <p className="mb-7 text-sm text-brown-light"><span className="font-medium text-brown-dark">Dimensions:</span> {product.dimensions}</p>}
+
+            <div className="mb-7">
+              <p className="text-xs uppercase tracking-widest text-brown-light mb-3">Colour</p>
+              <div className="flex flex-wrap gap-2">
+                {colorOptions.map((variant) => {
+                  const colorId = variant.color?.id || variant.color?.name || variant.color
+                  const selected = colorId === selectedColorId
+                  return (
+                    <button key={colorId} onClick={() => selectColor(variant)} className={`px-4 py-2 rounded-lg border text-sm ${selected ? 'border-brown-dark bg-sand text-brown-dark' : 'border-sand text-brown-light'}`}>
+                      {variant.color?.name || variant.color}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {sizeOptions.some((variant) => variant.size) && (
+              <div className="mb-7">
+                <p className="text-xs uppercase tracking-widest text-brown-light mb-3">Size</p>
+                <div className="flex flex-wrap gap-2">
+                  {sizeOptions.map((variant) => (
+                    <button key={variant.id} onClick={() => setSelectedVariantId(variant.id)} disabled={variant.availableQuantity <= 0} className={`px-4 py-2 rounded-lg border text-sm disabled:opacity-40 ${variant.id === selectedVariant?.id ? 'border-brown-dark bg-sand' : 'border-sand'}`}>
+                      {variant.size || 'Standard'}
+                    </button>
+                  ))}
                 </div>
-              )}
-              <p className="text-3xl font-bold text-brown-dark">
-                ₹{product.price}
+              </div>
+            )}
+
+            <div className="mb-8">
+              <p className={`text-sm font-medium mb-3 ${availableQuantity > 0 ? 'text-green-700' : 'text-red-600'}`}>
+                {availableQuantity > 0 ? `${availableQuantity} available` : 'Out of stock'}
               </p>
-            </div>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2 text-brown-dark">
-                Description
-              </h2>
-              <p className="text-brown-dark/80">{product.description}</p>
-            </div>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2 text-brown-dark">
-                Dimensions
-              </h2>
-              <p className="text-brown-dark/80">{product.dimensions}</p>
-            </div>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2 text-brown-dark">
-                Quantity
-              </h2>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="bg-brown-light hover:bg-brown text-white p-2 rounded-lg transition-colors"
-                >
-                  <Minus size={20} />
-                </button>
-                <span className="text-xl font-semibold w-12 text-center">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="bg-brown-light hover:bg-brown text-white p-2 rounded-lg transition-colors"
-                >
-                  <Plus size={20} />
-                </button>
+              <div className="inline-flex border border-sand rounded-lg overflow-hidden">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1} className="p-3 disabled:opacity-30"><Minus size={16} /></button>
+                <span className="w-12 flex items-center justify-center">{quantity}</span>
+                <button onClick={() => setQuantity(Math.min(availableQuantity, quantity + 1))} disabled={quantity >= availableQuantity} className="p-3 disabled:opacity-30"><Plus size={16} /></button>
               </div>
             </div>
 
-            {/* Delivery Options */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-3 text-brown-dark">
-                Delivery Option
-              </h2>
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="delivery"
-                    value="pickup"
-                    checked={deliveryOption === 'pickup'}
-                    onChange={(e) => setDeliveryOption(e.target.value)}
-                    className="w-5 h-5 text-purple"
-                  />
-                  <span className="text-brown-dark">Pick up</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="delivery"
-                    value="delivery"
-                    checked={deliveryOption === 'delivery'}
-                    onChange={(e) => setDeliveryOption(e.target.value)}
-                    className="w-5 h-5 text-purple"
-                  />
-                  <span className="text-brown-dark">Delivery by Porter</span>
-                </label>
-
-                {deliveryOption === 'delivery' && (
-                  <div className="ml-8 mt-2">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Enter pincode"
-                        value={pincode}
-                        onChange={(e) => setPincode(e.target.value)}
-                        maxLength={6}
-                        className="input-field flex-1"
-                      />
-                      <button
-                        onClick={checkDelivery}
-                        className="btn-secondary"
-                      >
-                        Check
-                      </button>
-                    </div>
-                    {deliveryAvailable === true && (
-                      <p className="text-green-600 mt-2 flex items-center gap-2">
-                        <MapPin size={16} />
-                        Delivery available! Charges: ₹{deliveryCharges}
-                      </p>
-                    )}
-                    {deliveryAvailable === false && (
-                      <p className="text-red-600 mt-2">
-                        Delivery not available for this pincode. Currently, we
-                        only deliver to Gurgaon (pincodes starting with 122).
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+            <div className="flex gap-3">
+              <button onClick={add} disabled={!selectedVariant || availableQuantity <= 0} className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"><ShoppingCart size={18} />{availableQuantity > 0 ? 'Add to Cart' : 'Out of stock'}</button>
+              <button onClick={() => isInWishlist(product.id) ? removeFromWishlist(product.id) : addToWishlist(product)} className={`p-3.5 rounded-lg border ${isInWishlist(product.id) ? 'bg-terracotta text-white' : 'border-sand'}`} aria-label="Toggle wishlist"><Heart fill={isInWishlist(product.id) ? 'currentColor' : 'none'} /></button>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-4">
-              <button
-                onClick={handleAddToCart}
-                className="btn-primary flex-1 flex items-center justify-center gap-2"
-              >
-                <ShoppingCart size={20} />
-                Add to Cart
-              </button>
-              <button
-                onClick={handleWishlistToggle}
-                className={`p-4 rounded-lg transition-colors ${
-                  isInWishlist(product.id)
-                    ? 'bg-purple text-white'
-                    : 'bg-brown-light text-brown-dark hover:bg-purple hover:text-white'
-                }`}
-                aria-label="Toggle wishlist"
-              >
-                <Heart
-                  size={24}
-                  fill={isInWishlist(product.id) ? 'currentColor' : 'none'}
-                />
-              </button>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-brown-light">
-              <p className="text-sm text-brown-dark/60">
-                <strong>Note:</strong> All products are handcrafted and may have
-                slight variations, making each piece unique.
-              </p>
-            </div>
+            {feedback && <div className={`mt-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${feedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}><Check size={16} />{feedback.message}</div>}
           </div>
         </div>
       </div>
@@ -342,4 +183,3 @@ const ProductDetail = () => {
 }
 
 export default ProductDetail
-

@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2 } from 'lucide-react'
-import {
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from 'firebase/firestore'
-import { db } from '../../config/firebase'
+import { adminApi } from '../../services/commerceApi'
+import { invalidateCatalogue } from '../../services/catalogueApi'
 
 const CategoriesTab = () => {
   const [categories, setCategories] = useState([])
@@ -23,12 +16,8 @@ const CategoriesTab = () => {
 
   const fetchCategories = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'categories'))
-      const categoriesData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      setCategories(categoriesData)
+      const data = await adminApi.getSnapshot(['categories'])
+      setCategories(data.categories)
     } catch (error) {
       console.error('Error fetching categories:', error)
       alert('Error fetching categories')
@@ -45,17 +34,16 @@ const CategoriesTab = () => {
     setLoading(true)
     try {
       if (editingCategory) {
-        // Update existing category
-        await updateDoc(doc(db, 'categories', editingCategory.id), {
+        await adminApi.saveCategory({
+          id: editingCategory.id,
           name: formData.name.trim(),
         })
       } else {
-        // Add new category
-        await addDoc(collection(db, 'categories'), {
+        await adminApi.saveCategory({
           name: formData.name.trim(),
-          createdAt: new Date().toISOString(),
         })
       }
+      invalidateCatalogue()
       setFormData({ name: '' })
       setEditingCategory(null)
       setIsModalOpen(false)
@@ -80,7 +68,8 @@ const CategoriesTab = () => {
     }
 
     try {
-      await deleteDoc(doc(db, 'categories', categoryId))
+      await adminApi.deleteCategory(categoryId)
+      invalidateCatalogue()
       fetchCategories()
     } catch (error) {
       console.error('Error deleting category:', error)
@@ -197,4 +186,3 @@ const CategoriesTab = () => {
 }
 
 export default CategoriesTab
-

@@ -7,17 +7,23 @@ const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const { login } = useAuth()
+  const { loginAdmin, refreshPermissions, logout } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (login(email, password)) {
+    try {
+      await loginAdmin(email, password)
+      const hasAdminAccess = await refreshPermissions()
+      if (!hasAdminAccess) {
+        await logout()
+        throw new Error('This account does not have administrator access.')
+      }
       navigate('/admin/dashboard')
-    } else {
-      setError('Invalid email or password')
+    } catch (err) {
+      setError(err.message || 'Failed to login')
     }
   }
 
@@ -52,12 +58,12 @@ const Login = () => {
                   size={20}
                 />
                 <input
-                  type="text"
+                  type="email"
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="admin@123"
+                  placeholder="administrator@example.com"
                   required
                 />
               </div>
@@ -81,7 +87,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="admin123"
+                  placeholder="Enter your password"
                   required
                 />
               </div>
@@ -92,11 +98,6 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-brown-dark/60">
-            <p>Default credentials:</p>
-            <p className="font-mono">Email: admin@123</p>
-            <p className="font-mono">Password: admin123</p>
-          </div>
         </div>
       </div>
     </div>
@@ -104,4 +105,3 @@ const Login = () => {
 }
 
 export default Login
-

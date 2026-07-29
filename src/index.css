@@ -4,25 +4,105 @@
 
 @layer base {
   body {
-    @apply font-indian bg-cream text-brown-dark;
+    font-family: 'Inter', 'Mukta', sans-serif;
+    @apply bg-cream text-brown-dark antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', serif;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: rgba(193, 106, 70, 0.2);
+    @apply text-brown-dark;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-brown hover:bg-brown-dark text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium;
+    @apply bg-brown-dark text-white px-6 py-2.5 rounded-lg transition-all duration-300 font-medium;
   }
-  
+
+  .btn-primary:hover {
+    @apply bg-brown opacity-90;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
   .btn-secondary {
-    @apply bg-purple hover:bg-purple-dark text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium;
+    @apply bg-sand text-brown-dark px-6 py-2.5 rounded-lg transition-all duration-300 font-medium hover:bg-gold-light;
   }
-  
+
+  .btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:active {
+    transform: translateY(0);
+  }
+
+  .btn-outline {
+    @apply border border-brown-light text-brown-dark px-6 py-2.5 rounded-lg transition-all duration-300 font-medium hover:bg-sand;
+  }
+
+  .btn-outline:hover {
+    @apply bg-sand;
+  }
+
+  .btn-outline:active {
+    transform: translateY(0);
+  }
+
   .card {
-    @apply bg-white rounded-lg shadow-md overflow-hidden transition-transform duration-200 hover:scale-105;
+    @apply bg-white rounded-xl border border-sand transition-all duration-500 hover:shadow-warm hover:border-gold-light;
   }
-  
+
+  .card-flat {
+    @apply bg-white rounded-xl border border-sand overflow-hidden;
+  }
+
   .input-field {
-    @apply w-full px-4 py-2 border-2 border-brown-light rounded-lg focus:outline-none focus:border-purple transition-colors;
+    @apply w-full px-4 py-2.5 border border-sand rounded-lg transition-all duration-300 bg-white focus:outline-none focus:border-terracotta focus:ring-1 focus:ring-terracotta/20;
+    font-family: 'Inter', 'Mukta', sans-serif;
+  }
+
+  .glass-card {
+    @apply bg-white rounded-xl border border-sand transition-colors;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-5xl font-medium text-brown-dark tracking-tight;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-brown-light font-light mt-4;
+    font-family: 'Inter', 'Mukta', sans-serif;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-md text-xs font-medium tracking-wide uppercase;
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center px-3 py-1 bg-sand text-brown-dark rounded-md text-xs font-medium tracking-wide border border-transparent;
+  }
+
+  .badge-purple {
+    @apply inline-flex items-center px-3 py-1 bg-white border border-sand text-brown-dark transition-colors rounded-md text-xs font-medium tracking-wide;
+  }
+
+  .motif-border {
+    @apply relative border-t border-sand pt-4;
   }
 }
 
@@ -30,10 +110,17 @@
   .animate-fade-in {
     animation: fadeIn 0.5s ease-in-out;
   }
-  
+
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -46,14 +133,30 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .text-gradient {
+    @apply text-brown-dark;
+  }
+
+  .text-gradient-gold {
+    @apply text-terracotta;
+  }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+/* Custom scrollbar for filter panels */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
 
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-sand rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-brown-light rounded-full;
+}
+
+/* Pottery motif decoration */
+.pottery-motif {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2.5v-2h-3v-4h3V0h2v5.5h3v4h-3v2v2.5h20v2H22v2.5v2h3v4h-3V40h-2v-5.5h-3v-4h3V22.5v-2z' fill='%23C4B5A5' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+}

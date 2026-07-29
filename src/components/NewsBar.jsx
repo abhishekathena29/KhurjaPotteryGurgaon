@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const NewsBar = () => {
@@ -11,12 +11,12 @@ const NewsBar = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  useEffect(() => {
+  useState(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % newsItems.length)
     }, 5000)
     return () => clearInterval(interval)
-  }, [newsItems.length])
+  })
 
   const nextNews = () => {
     setCurrentIndex((prev) => (prev + 1) % newsItems.length)
@@ -27,24 +27,24 @@ const NewsBar = () => {
   }
 
   return (
-    <div className="bg-brown-dark text-cream py-2 px-4 text-sm">
+    <div className="bg-sand text-brown-dark py-2 px-4 text-xs font-medium border-b border-cream">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <button
           onClick={prevNews}
-          className="hover:text-purple-light transition-colors"
+          className="hover:text-brown transition-colors p-1"
           aria-label="Previous news"
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={16} />
         </button>
         <div className="flex-1 text-center mx-4">
-          <p className="animate-fade-in">{newsItems[currentIndex]}</p>
+          <p className="animate-fade-in font-body">{newsItems[currentIndex]}</p>
         </div>
         <button
           onClick={nextNews}
-          className="hover:text-purple-light transition-colors"
+          className="hover:text-brown transition-colors p-1"
           aria-label="Next news"
         >
-          <ChevronRight size={20} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
@@ -52,4 +52,3 @@ const NewsBar = () => {
 }
 
 export default NewsBar
-

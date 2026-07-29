@@ -1,0 +1,214 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // .data.get(key, default) instead of .data.key — most user docs have no isAdmin
+      // field at all, and dotted access throws "Property isAdmin is undefined" for those,
+      // which can abort an entire `isAdmin() || (...)` check instead of falling through.
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true;
+    }
+
+    function ownsUser(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // ---- Catalogue (public read, admin write) ----
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{productId} {
+      // Products carry no sensitive data (cost/margin lives in productCommercials, admin-only
+      // below) — public read lets the client fetch the whole catalogue in one query and filter
+      // active/draft/legacy-schema products itself, exactly like normalizeProduct() already does.
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /variants/{variantId} {
+        allow read: if true;
+        allow create, delete: if isAdmin();
+
+        // Checkout reservation: a signed-in customer may only increase reservedQuantity
+        // (never past onHandQuantity) and keep availableQuantity/stockStatus consistent.
+        // Every other mutation (release, commit, restock, edits) is admin-only.
+        allow update: if isAdmin() || (
+          signedIn()
+          && resource.data.status == 'active'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reservedQuantity', 'availableQuantity', 'stockStatus', 'updatedAt'])
+          && request.resource.data.reservedQuantity is int
+          && request.resource.data.reservedQuantity > resource.data.reservedQuantity
+          && request.resource.data.reservedQuantity <= resource.data.onHandQuantity
+          && request.resource.data.availableQuantity == resource.data.onHandQuantity - request.resource.data.reservedQuantity
+        );
+      }
+    }
+
+    // Cost/margin/seller-payout data — admin only, never readable by a customer.
+    match /productCommercials/{productId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Commerce settings (delivery fee, payment QR, SKU/order numbering, etc.) — nothing in
+    // here is cost/margin-sensitive, so it's a single public-read, admin-write document
+    // instead of the old admin-only doc mirrored into a separate public one.
+    match /commerceConfig/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Users ----
+
+    match /users/{userId} {
+      allow read: if ownsUser(userId) || isAdmin();
+      allow create: if ownsUser(userId)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'createdAt']);
+      allow update: if ownsUser(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'address', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // ---- Checkout ----
+
+    // Idempotency guard: create-once per (customer, idempotencyKey), never updated/deleted by a client.
+    match /checkoutIdempotency/{idempotencyId} {
+      allow read: if signedIn() && idempotencyId.split('_')[0] == request.auth.uid;
+      allow create: if signedIn() && idempotencyId.split('_')[0] == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /counters/{counterId} {
+      // Order numbers are allocated by customers at checkout, one at a time, strictly
+      // sequential — including creating the counter itself on the very first order ever
+      // placed (resource == null means the document does not exist yet).
+      allow read: if isAdmin() || (signedIn() && counterId == 'orderNumber');
+      allow write: if isAdmin() || (
+        signedIn() && counterId == 'orderNumber'
+        && request.resource.data.keys().hasOnly(['nextNumber', 'updatedAt'])
+        && request.resource.data.nextNumber == (resource == null ? 1 : resource.data.nextNumber) + 1
+      );
+    }
+
+    // SKU uniqueness claims — only ever touched by admin product edits.
+    match /skus/{sku} {
+      allow read, write: if isAdmin();
+    }
+
+    match /paymentProofUploads/{proofId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'uploaded';
+      // Customer, at checkout: uploaded -> attached (claims the proof for their new order).
+      // Admin, on review: attached -> verified/rejected.
+      allow update: if isAdmin() || (
+        signedIn() && resource.data.ownerId == request.auth.uid
+        && resource.data.status == 'uploaded'
+        && request.resource.data.status == 'attached'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'orderId', 'orderNumber', 'attachedAt'])
+      );
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+
+      // A customer may create their own order once, in its initial unpaid/reserved state,
+      // with a total that is internally consistent. Per-line price forgery against the live
+      // product price cannot be fully validated here (Firestore rules cannot iterate an
+      // arbitrary-length array) — the manual payment-proof review step is the compensating
+      // control before any order is ever marked paid.
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.items.size() > 0
+        && request.resource.data.grandTotalPaise == request.resource.data.subtotalPaise + request.resource.data.deliveryFeePaise
+        && request.resource.data.status == 'pending'
+        && request.resource.data.fulfilmentStatus == 'pending'
+        && request.resource.data.inventoryState == 'reserved'
+        && request.resource.data.payment.status == 'verification_pending'
+        && request.resource.data.payment.amountPaidPaise == 0;
+
+      // All transitions (fulfilment status, payment verification, cancellation) are admin-only.
+      allow update: if isAdmin();
+      allow delete: if false;
+
+      match /events/{eventId} {
+        allow read: if isAdmin() ||
+          (signedIn() && get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid);
+        // Not a get()-checked ownership rule like the read above: the customer-side write
+        // happens in the SAME transaction as the parent order's own creation, and a rules
+        // get() cannot reliably read a document being created in that same transaction.
+        // Low-sensitivity audit trail, so self-attested actorId is an acceptable trade-off.
+        allow create: if isAdmin() || (signedIn() && request.resource.data.actorId == request.auth.uid);
+        allow update, delete: if false;
+      }
+    }
+
+    // Append-only stock audit trail. Customers may log their own checkout reservations;
+    // every other movement type (commit, release, restore, adjustment) is admin-only.
+    match /inventoryMovements/{movementId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() || (
+        signedIn()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.type == 'reservation'
+      );
+      allow update, delete: if false;
+    }
+
+    match /productRequests/{requestId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
+
+      match /events/{eventId} {
+        allow read: if isAdmin() ||
+          (signedIn() && get(/databases/$(database)/documents/productRequests/$(requestId)).data.userId == request.auth.uid);
+        allow write: if isAdmin();
+      }
+    }
+
+    // ---- Admin-only operational data ----
+
+    match /sellers/{sellerId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /sellerLedger/{entryId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /settlements/{settlementId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /refunds/{refundId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /bulkJobs/{jobId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /auditEvents/{eventId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

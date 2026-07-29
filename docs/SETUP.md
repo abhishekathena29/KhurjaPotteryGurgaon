@@ -76,6 +76,7 @@ src/
 
 - Product images are currently using placeholder divs with emojis. Replace with actual product images.
 - Map integration on Contact page needs Google Maps API or similar service.
-- Form submissions currently just log to console - integrate with backend API.
+- The Contact page form currently just logs to console. (The "Request a Product" form
+  already persists to Firestore — see `docs/ARCHITECTURE.md` §4.7.)
 - Delivery pincode check is simplified - integrate with actual delivery service API.
 

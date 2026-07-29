@@ -47,35 +47,35 @@ const TestimonialsSection = () => {
   ]
 
   return (
-    <section className="bg-cream rounded-lg shadow-lg p-8 mb-8">
-      <h2 className="text-3xl font-bold mb-6 text-brown-dark text-center">
-        What Our Customers Say
+    <section className="bg-white border border-sand rounded-xl p-8 md:p-12 mb-12 max-w-6xl mx-auto">
+      <h2 className="text-2xl md:text-3xl font-display font-medium mb-12 text-brown-dark tracking-tight text-center">
+        What Our Community Says
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {testimonials.map((testimonial, idx) => (
           <div
             key={idx}
-            className="bg-white rounded-lg shadow-md p-6 relative"
+            className="bg-sand/30 border border-sand rounded-xl p-8 relative flex flex-col"
           >
-            <Quote className="text-purple/20 absolute top-4 right-4" size={40} />
-            <div className="flex items-center gap-1 mb-3">
+            <Quote className="text-brown-light/20 absolute top-6 right-6" size={32} />
+            <div className="flex items-center gap-1 mb-6">
               {[...Array(testimonial.rating)].map((_, i) => (
                 <Star
                   key={i}
-                  size={18}
-                  className="text-yellow-400 fill-current"
+                  size={14}
+                  className="text-terracotta fill-terracotta"
                 />
               ))}
             </div>
-            <p className="text-brown-dark/80 mb-4 italic relative z-10">
+            <p className="text-brown-dark font-light leading-relaxed mb-8 relative z-10 flex-1 text-sm md:text-base">
               "{testimonial.text}"
             </p>
-            <div className="border-t border-brown-light pt-4">
-              <p className="font-semibold text-brown-dark">
-                - {testimonial.name}
+            <div className="border-t border-sand pt-6 mt-auto">
+              <p className="font-medium text-brown-dark text-sm tracking-wide">
+                {testimonial.name}
               </p>
-              <p className="text-sm text-brown-dark/60">{testimonial.location}</p>
-              <p className="text-xs text-purple mt-1">{testimonial.product}</p>
+              <p className="text-xs text-brown-light font-light mt-1">{testimonial.location}</p>
+              <p className="text-[10px] uppercase tracking-widest text-terracotta mt-3 font-medium">{testimonial.product}</p>
             </div>
           </div>
         ))}
