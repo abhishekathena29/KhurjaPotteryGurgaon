@@ -20,7 +20,7 @@ const Footer = () => {
               </h2>
             </Link>
             <p className="text-brown-light mt-2 text-sm leading-relaxed">
-              Curated handcrafted ceramics and pottery connecting master artisans directly with art lovers since 2024.
+              A digital shopfront for Khurja's potters, helping a 600-year-old craft reach people who'll never drive past the roadside.
             </p>
           </div>
 

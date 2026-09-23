@@ -6,6 +6,7 @@ import { useProducts } from '../hooks/useProducts'
 import { formatMoney } from '../lib/commerce'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
+import { firstConversation, founder, storyPhotos } from '../data/founderStory'
 
 const Home = () => {
   const { categories, loading: categoriesLoading } = useCategories()
@@ -21,28 +22,25 @@ const Home = () => {
 
   const slides = [
     {
-      image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=1200&h=400&fit=crop',
-      title: 'Master Artisans',
-      description: 'Preserving heritage through handcrafted ceramics.',
-      overlay: 'bg-brown-dark/50',
+      photo: storyPhotos.potterAtStall,
+      eyebrow: 'Khurja Potters · Gurgaon',
+      title: 'A 600-Year-Old Craft by the Roadside',
+      description: "Khurja's potters have shaped and fired clay for centuries. Here, their work gets a shopfront that doesn't close when the roadside does.",
+      cta: { label: 'Shop Their Work', to: '/products/All products' },
     },
     {
-      image: 'https://images.unsplash.com/photo-1493106641515-6b5631de4bb9?w=1200&h=400&fit=crop',
-      title: 'Curated Collections',
-      description: 'A new selection of minimalist pottery.',
-      overlay: 'bg-brown-dark/50',
+      photo: storyPhotos.roadsideMugs,
+      eyebrow: 'The Khurja Tradition',
+      title: 'Shaped the Slow Way. Found the Fast Way.',
+      description: 'Pots shaped by hand, on a wheel, now a few clicks from your door.',
+      cta: { label: 'Shop Collection', to: '/products/All products' },
     },
     {
-      image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=1200&h=400&fit=crop',
-      title: 'Safe Delivery',
-      description: 'Seamless shipping to your doorstep.',
-      overlay: 'bg-brown-dark/50',
-    },
-    {
-      image: 'https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?w=1200&h=400&fit=crop',
-      title: 'Timeless Design',
-      description: 'Loved by interior designers worldwide.',
-      overlay: 'bg-brown-dark/50',
+      photo: storyPhotos.founderRoadsideChat,
+      eyebrow: 'Our Story',
+      title: 'It Started With a Sunday',
+      description: "How one high schooler's question became a digital shopfront for Khurja's potters.",
+      cta: { label: 'Read the Story', to: '/about' },
     },
   ]
 
@@ -66,31 +64,39 @@ const Home = () => {
     <div>
       {/* Hero Slider */}
       <section className="relative">
-        <div className="relative h-96 md:h-[560px] overflow-hidden">
+        <div className="relative h-[460px] md:h-[560px] overflow-hidden bg-brown-dark">
           {slides.map((slide, index) => (
             <div
-              key={index}
+              key={slide.title}
+              aria-hidden={index !== currentSlide}
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0 z-0'
                 }`}
             >
-              <div
-                className={`w-full h-full bg-cover bg-center transition-transform duration-[10000ms] ease-linear ${index === currentSlide ? 'scale-105' : 'scale-100'}`}
-                style={{ backgroundImage: `url(${slide.image})` }}
-              >
-                <div className={`absolute inset-0 ${slide.overlay} flex items-center`}>
-                  <div className="max-w-7xl mx-auto px-4 w-full">
-                    <div className="max-w-xl animate-fade-in-up">
-                      <span className="text-white/80 tracking-[0.2em] uppercase text-xs font-semibold mb-4 inline-block">Potters Central</span>
-                      <h2 className="text-4xl md:text-6xl font-display font-medium mb-4 text-white tracking-tight">
-                        {slide.title}
-                      </h2>
-                      <p className="text-lg md:text-xl text-white/80 mb-8 font-light leading-relaxed">
-                        {slide.description}
-                      </p>
-                      <Link to="/products/All products" className="bg-white hover:bg-sand text-brown-dark px-8 py-3.5 rounded-lg transition-all font-medium inline-flex items-center gap-2">
-                        Shop Collection <ArrowRight size={18} />
-                      </Link>
-                    </div>
+              <img
+                src={slide.photo.src}
+                alt={slide.photo.alt}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[10000ms] ease-linear ${index === currentSlide ? 'scale-105' : 'scale-100'}`}
+                style={{ objectPosition: slide.photo.position }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-brown-dark/85 via-brown-dark/55 to-brown-dark/20 flex items-center">
+                <div className="max-w-7xl mx-auto px-4 md:px-20 w-full">
+                  <div className="max-w-xl animate-fade-in-up">
+                    <span className="text-white/80 tracking-[0.2em] uppercase text-xs font-semibold mb-4 inline-block">{slide.eyebrow}</span>
+                    <h2 className="text-4xl md:text-6xl font-display font-medium mb-4 text-white tracking-tight">
+                      {slide.title}
+                    </h2>
+                    <p className="text-lg md:text-xl text-white/80 mb-8 font-light leading-relaxed">
+                      {slide.description}
+                    </p>
+                    <Link
+                      to={slide.cta.to}
+                      tabIndex={index === currentSlide ? undefined : -1}
+                      className="bg-white hover:bg-sand text-brown-dark px-8 py-3.5 rounded-lg transition-all font-medium inline-flex items-center gap-2"
+                    >
+                      {slide.cta.label} <ArrowRight size={18} />
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -100,14 +106,14 @@ const Home = () => {
           {/* Slider Controls */}
           <button
             onClick={prevSlide}
-            className="absolute left-6 top-1/2 -translate-y-1/2 bg-white text-brown-dark hover:bg-sand p-3 rounded-full transition-all shadow-sm z-10"
+            className="hidden md:block absolute left-6 top-1/2 -translate-y-1/2 bg-white text-brown-dark hover:bg-sand p-3 rounded-full transition-all shadow-sm z-10"
             aria-label="Previous slide"
           >
             <ChevronLeft size={20} className="stroke-[1.5]" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-6 top-1/2 -translate-y-1/2 bg-white text-brown-dark hover:bg-sand p-3 rounded-full transition-all shadow-sm z-10"
+            className="hidden md:block absolute right-6 top-1/2 -translate-y-1/2 bg-white text-brown-dark hover:bg-sand p-3 rounded-full transition-all shadow-sm z-10"
             aria-label="Next slide"
           >
             <ChevronRight size={20} className="stroke-[1.5]" />
@@ -128,15 +134,58 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Why We Exist */}
+      <section className="py-24 bg-white border-b border-sand">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            <div className="lg:col-span-7">
+              <span className="text-terracotta tracking-widest uppercase text-xs font-semibold mb-3 inline-block">Why We Exist</span>
+              <h2 className="text-3xl md:text-5xl font-display font-medium text-brown-dark tracking-tight mb-6">
+                The Work Was Extraordinary. The Reach Was Shrinking.
+              </h2>
+              <p className="text-lg text-brown-dark/80 mb-6 font-light leading-relaxed">
+                Khurja's potters come from a migrant community that has been shaping and
+                firing clay for roughly 600 years. Today many sell from roadside stalls on the
+                outskirts of Gurgaon, and their craft has stayed almost entirely offline while
+                everyone's buying habits moved online.
+              </p>
+              <p className="text-brown-light mb-8 font-light leading-relaxed">
+                Potters Central is a digital shopfront built for these underserved potters, so
+                their work reaches people who'll never drive past that stretch of road. Every
+                order supports the potter who made the piece.
+              </p>
+              <Link to="/about" className="inline-flex items-center gap-2 border-b border-brown-dark pb-1 font-medium text-brown-dark hover:text-terracotta hover:border-terracotta transition-colors">
+                Read the Full Story <ArrowRight size={16} />
+              </Link>
+            </div>
+            <dl className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+              {[
+                { value: '600', unit: 'years', label: 'of shaping and firing clay' },
+                { value: 'Khurja', unit: '', label: 'nicknamed the Ceramic City' },
+                { value: 'By hand', unit: '', label: 'shaped on a wheel, the slow way' },
+              ].map((fact) => (
+                <div key={fact.value} className="flex flex-col-reverse bg-cream border border-sand rounded-xl px-6 py-5">
+                  <dt className="text-sm text-brown-light font-light mt-1">{fact.label}</dt>
+                  <dd className="font-display text-3xl font-medium text-brown-dark tracking-tight">
+                    {fact.value}
+                    {fact.unit && <span className="text-base font-body text-brown-light ml-2">{fact.unit}</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </section>
+
       {/* Category Tiles */}
       <section className="py-24 bg-cream relative border-b border-sand">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <span className="text-terracotta tracking-widest uppercase text-xs font-semibold mb-3 inline-block">Categories</span>
             <h2 className="text-3xl md:text-5xl font-display font-medium text-brown-dark tracking-tight mb-4">
-              Explore Collections
+              Many Forms. One Craft.
             </h2>
-            <p className="text-brown-light font-light max-w-2xl mx-auto">Discover authentic handcrafted pottery for every corner of your home.</p>
+            <p className="text-brown-light font-light max-w-2xl mx-auto">Mugs, plates, bowls and more, shaped by Khurja's potters.</p>
           </div>
           {categoriesLoading ? (
             <div className="flex justify-center py-10">
@@ -178,7 +227,7 @@ const Home = () => {
           <div className="text-center mb-16">
             <span className="text-terracotta tracking-widest uppercase text-xs font-semibold mb-3 inline-block">Most Popular</span>
             <h2 className="text-3xl md:text-5xl font-display font-medium text-brown-dark tracking-tight mb-4">Curated Favorites</h2>
-            <p className="text-brown-light font-light max-w-2xl mx-auto">Handpicked bestsellers that define timeless design.</p>
+            <p className="text-brown-light font-light max-w-2xl mx-auto">The potters' bestsellers, from the roadside stall to your home.</p>
           </div>
           {productsLoading ? (
             <div className="flex justify-center py-10">
@@ -251,6 +300,45 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Founder's Story */}
+      <section className="py-24 bg-cream border-t border-sand">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <figure>
+              <div className="aspect-[4/3] overflow-hidden rounded-xl border border-sand bg-sand">
+                <img
+                  src={storyPhotos.founderWithPotter.src}
+                  alt={storyPhotos.founderWithPotter.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: storyPhotos.founderWithPotter.position }}
+                />
+              </div>
+              <figcaption className="mt-3 text-sm text-brown-light font-light">
+                {storyPhotos.founderWithPotter.caption}
+              </figcaption>
+            </figure>
+            <div>
+              <span className="text-terracotta tracking-widest uppercase text-xs font-semibold mb-3 inline-block">The Founder's Story</span>
+              <h2 className="text-3xl md:text-4xl font-display font-medium text-brown-dark tracking-tight mb-6 leading-tight">
+                {firstConversation.lead}
+              </h2>
+              <p className="text-lg text-brown-dark/80 mb-8 font-light leading-relaxed">
+                {firstConversation.paragraphs[0]}
+              </p>
+              <div className="border-l-2 border-terracotta pl-5 mb-10">
+                <p className="font-display italic text-2xl text-brown-dark">{founder.name}</p>
+                <p className="text-xs uppercase tracking-widest text-brown-light mt-1">{founder.role}</p>
+              </div>
+              <Link to="/about" className="inline-flex items-center gap-2 border-b border-brown-dark pb-1 font-medium text-brown-dark hover:text-terracotta hover:border-terracotta transition-colors">
+                Read the Full Story <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Why Choose Us */}
       <section className="py-24 bg-cream border-t border-b border-sand">
         <div className="max-w-7xl mx-auto px-4">
@@ -313,66 +401,25 @@ const Home = () => {
         </div>
       </section>
 
-      {/* About Preview */}
-      <section className="py-24 bg-cream border-t border-sand">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <span className="text-terracotta tracking-widest uppercase text-xs font-semibold mb-3 inline-block">Our Story</span>
-              <h2 className="text-3xl md:text-5xl font-display font-medium text-brown-dark tracking-tight mb-6">
-                The Vision Behind Potters Central
-              </h2>
-              <p className="text-lg text-brown-dark/80 mb-6 font-light leading-relaxed">
-                A scholar's journey to bridge the gap between traditional artisans
-                and modern customers. Discover how one person's vision is helping
-                local potters reach customers across India and beyond.
-              </p>
-              <p className="text-brown-light mb-8 font-light leading-relaxed">
-                Every product you see here represents hours of skilled craftsmanship,
-                traditional techniques, and cultural heritage. By choosing Potters Central,
-                you're supporting local artisans, preserving crafts, and
-                bringing a piece of culture into your home.
-              </p>
-              <Link to="/about" className="inline-flex items-center gap-2 border-b border-brown-dark pb-1 font-medium text-brown-dark hover:text-terracotta hover:border-terracotta transition-colors">
-                Read Our Story <ArrowRight size={16} />
-              </Link>
-            </div>
-            <div className="bg-white border border-sand rounded-xl p-10 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-sand/50 rounded-bl-full -z-10 blur-2xl"></div>
-              <h3 className="text-2xl font-display font-medium mb-6 text-brown-dark tracking-tight">Our Mission</h3>
-              <p className="text-brown-dark/80 mb-8 font-light leading-relaxed">
-                To preserve and promote traditional Indian pottery while empowering
-                local artisans and bringing authentic handcrafted ceramics strictly
-                to modern homes.
-              </p>
-              <div className="space-y-4">
-                {[
-                  'Direct support to local potters and their families',
-                  'Preservation of traditional Indian pottery techniques',
-                  'Bringing timeless designed goods to modern homes',
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-4">
-                    <span className="w-5 h-5 rounded-full border border-terracotta/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-terracotta text-[10px]">✓</span>
-                    </span>
-                    <p className="text-brown-dark/80 font-light text-sm">{item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
-      <section className="py-24 bg-brown-dark text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sand via-brown-dark to-brown-dark"></div>
+      <section className="py-24 md:py-32 bg-brown-dark text-white relative overflow-hidden">
+        <img
+          src={storyPhotos.roadsidePlates.src}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: storyPhotos.roadsidePlates.position }}
+        />
+        <div className="absolute inset-0 bg-brown-dark/80"></div>
         <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
+          <span className="text-white/70 tracking-[0.2em] uppercase text-xs font-semibold mb-4 inline-block">Support the Craft</span>
           <h2 className="text-4xl md:text-5xl font-display font-medium mb-6 tracking-tight">
-            Ready to Explore Our Collection?
+            Bring a Piece of Khurja Home
           </h2>
           <p className="text-lg mb-10 text-white/70 font-light max-w-2xl mx-auto">
-            Browse our wide range of handcrafted, timeless pottery pieces.
+            Every order helps a potter sell more, and keeps a 600-year-old craft alive.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/products/All products" className="bg-white hover:bg-sand text-brown-dark px-8 py-3.5 rounded-lg transition-all font-medium inline-flex items-center gap-2 shadow-sm">
